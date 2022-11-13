@@ -1,5 +1,6 @@
 /*
   This software, the ideas and concepts is Copyright (c) David Bird 2021
+  Edited by Ramin Sangesari for RelayFi
   All rights to this software are reserved.
   It is prohibited to redistribute or reproduce of any part or all of the software contents in any form other than the following:
   1. You may print or download to a local hard disk extracts for your personal and non-commercial use only.
@@ -39,10 +40,10 @@ const char* ServerName = "Controller"; // Connect to the server with http://cont
 #define Channel3        2              // Define Channel-3
 #define Channel4        3              // Define Channel-4
 // Now define the GPIO pins to be used for relay control
-#define Channel1_Pin    0              // Define the Relay Control pin
-#define Channel2_Pin    2              // Define the Relay Control pin
-#define Channel3_Pin    13             // Define the Relay Control pin
-#define Channel4_Pin    14             // Define the Relay Control pin
+#define Channel1_Pin    18             // Define the Relay Control pin
+#define Channel2_Pin    19             // Define the Relay Control pin
+#define Channel3_Pin    23             // Define the Relay Control pin
+#define Channel4_Pin    25             // Define the Relay Control pin
 
 #define LEDPIN          5              // Define the LED Control pin
 #define ChannelReverse  false          // Set to true for Relay that requires a signal HIGH for ON, usually relays need a LOW to actuate
