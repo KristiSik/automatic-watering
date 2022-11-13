@@ -1,4 +1,4 @@
-# ESP32-Multi-Channel-Relay-Controller
+# ESP32 Multi Channel Relay Controller for RelayFi
 
 A 4-channel relay controller that enables each channel to be independently controlled using a schedule per channel.
 
