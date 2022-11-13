@@ -24,7 +24,7 @@
 #include "AsyncTCP.h"                  // https://github.com/me-no-dev/AsyncTCP
 
 //################  VERSION  ###########################################
-String version = "1.0";      // Programme version, see change log at end
+String version = "1.2";      // Programme version, see change log at end
 //################ VARIABLES ###########################################
 
 const char* ServerName = "Controller"; // Connect to the server with http://controller.local/ e.g. if name = "myserver" use http://myserver.local/
