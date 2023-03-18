@@ -1,6 +1,5 @@
 /*
   This software, the ideas and concepts is Copyright (c) David Bird 2021
-  Edited by Ramin Sangesari for RelayFi
   All rights to this software are reserved.
   It is prohibited to redistribute or reproduce of any part or all of the software contents in any form other than the following:
   1. You may print or download to a local hard disk extracts for your personal and non-commercial use only.
@@ -20,11 +19,11 @@
 #include <WiFi.h>                      // Built-in
 #include <ESPmDNS.h>                   // Built-in
 #include <SPIFFS.h>                    // Built-in
-#include "ESPAsyncWebServer.h"         // Built-in
+#include <ESPAsyncWebSrv.h>         // Built-in
 #include "AsyncTCP.h"                  // https://github.com/me-no-dev/AsyncTCP
 
 //################  VERSION  ###########################################
-String version = "1.2";      // Programme version, see change log at end
+String version = "1.0";      // Programme version, see change log at end
 //################ VARIABLES ###########################################
 
 const char* ServerName = "Controller"; // Connect to the server with http://controller.local/ e.g. if name = "myserver" use http://myserver.local/
@@ -40,10 +39,10 @@ const char* ServerName = "Controller"; // Connect to the server with http://cont
 #define Channel3        2              // Define Channel-3
 #define Channel4        3              // Define Channel-4
 // Now define the GPIO pins to be used for relay control
-#define Channel1_Pin    18             // Define the Relay Control pin
-#define Channel2_Pin    19             // Define the Relay Control pin
-#define Channel3_Pin    23             // Define the Relay Control pin
-#define Channel4_Pin    25             // Define the Relay Control pin
+#define Channel1_Pin    0              // Define the Relay Control pin
+#define Channel2_Pin    2              // Define the Relay Control pin
+#define Channel3_Pin    4              // Define the Relay Control pin
+#define Channel4_Pin    14             // Define the Relay Control pin
 
 #define LEDPIN          5              // Define the LED Control pin
 #define ChannelReverse  false          // Set to true for Relay that requires a signal HIGH for ON, usually relays need a LOW to actuate
@@ -61,7 +60,7 @@ settings     Timer[Channels][7];       // Timer settings, n-Channels each 7-days
 //################ VARIABLES ################
 const char* ssid       = "yourSSID";               // WiFi SSID     replace with details for your local network
 const char* password   = "yourPASSWORD";           // WiFi Password replace with details for your local network
-const char* Timezone   = "GMT0BST,M3.5.0/01,M10.5.0/02";
+const char* Timezone   = "GMT0BST,M3.5.0,M10.5.0/3";
 // Example time zones
 //const char* Timezone = "MET-1METDST,M3.5.0/01,M10.5.0/02"; // Most of Europe
 //const char* Timezone = "CET-1CEST,M3.5.0,M10.5.0/3";       // Central Europe
@@ -74,8 +73,8 @@ const char* Timezone   = "GMT0BST,M3.5.0/01,M10.5.0/02";
 //const char* Timezone = "ACST-9:30ACDT,M10.1.0,M4.1.0/3":   // Australia
 
 // System values
-String sitetitle            = "4-Channel Relay Controller";
-String Year                 = "2021";     // For the footer line
+String sitetitle            = "Контролер поливу";
+String Year                 = "березень 2023";     // For the footer line
 
 bool   ManualOverride       = false;      // Manual override
 String Units                = "M";        // or Units = "I" for °F and 12:12pm time format
@@ -230,13 +229,13 @@ void loop() {
 void Homepage() {
   bool TimerSummary[4][7][48]; // 7 days each with 48 timer periods
   append_HTML_header(Refresh);
-  webpage += "<h2>Channel Status @ " + Time_str + "</h2><br>";
+  webpage += "<h2>Статус каналу @ " + Time_str + "</h2><br>";
   webpage += "<table class='centre'>";
   webpage += "<tr>";
-  webpage += " <td>Channel-1</td>";
-  webpage += " <td>Channel-2</td>";
-  webpage += " <td>Channel-3</td>";
-  webpage += " <td>Channel-4</td>";
+  webpage += " <td>Канал-1</td>";
+  webpage += " <td>Канал-2</td>";
+  webpage += " <td>Канал-3</td>";
+  webpage += " <td>Канал-4</td>";
   webpage += "</tr>";
   webpage += "<tr>";
   webpage += " <td><div class='c1 Circle'><a class='" + String((Channel1_State == "ON" ? "on'" : "off'")) + " href='/timer1'>" + String(Channel1_State) + "</a></div></td>";
@@ -246,7 +245,7 @@ void Homepage() {
   webpage += "</tr>";
   webpage += "</table>";
   webpage += "<br>";
-  webpage += "<h3>Summary of Channel Schedules</h3>";
+  webpage += "<h3>Звіт розкладів каналів</h3>";
   webpage += "<table class='centre sum'>";
   webpage += "<tr>";
   webpage += "<td>Time</td>";
@@ -292,12 +291,12 @@ bool CheckTime(byte channel, String DoW_Str, String TimeNow_Str) {
 //#########################################################################################
 void TimerSet(int channel) {
   append_HTML_header(noRefresh);
-  webpage += "<h2>Channel-" + String(channel + 1) + " Schedule Setup</h2><br>";
-  webpage += "<h3>Enter required time, use Clock symbol for ease of time entry</h3><br>";
+  webpage += "<h2>Канал-" + String(channel + 1) + " Налаштування розкладу</h2><br>";
+  webpage += "<h3>Введіть необхідний час</h3><br>";
   webpage += "<FORM action='/handletimer" + String(channel) + "'>";
   webpage += "<table class='centre timer'>";
   webpage += "<col><col><col><col><col><col><col><col>";
-  webpage += "<tr><td>Control</td>";
+  webpage += "<tr><td>Контроль</td>";
   webpage += "<td>" + Timer[channel][0].DoW + "</td>";
   for (byte dow = 1; dow < 6; dow++) { // Heading line showing DoW
     webpage += "<td>" + Timer[channel][dow].DoW + "</td>";
@@ -306,14 +305,14 @@ void TimerSet(int channel) {
   webpage += "</tr>";
   for (byte p = 0; p < NumOfEvents; p++) {
     webpage += "<tr>";
-    webpage += "<td>Start</td>";
+    webpage += "<td>Старт</td>";
     webpage += "<td><input type='time' name='" + String(0) + "." + String(p) + ".Start' value='"    + Timer[channel][0].Start[p] + "'></td>";
     for (int dow = 1; dow < 6; dow++) {
       webpage += "<td><input type='time' name='" + String(dow) + "." + String(p) + ".Start' value='" + Timer[channel][dow].Start[p] + "'></td>";
     }
     webpage += "<td><input type='time' name='" + String(6) + "." + String(p) + ".Start' value='" + Timer[channel][6].Start[p] + "'></td>";
     webpage += "</tr>";
-    webpage += "<tr><td>Stop</td>";
+    webpage += "<tr><td>Стоп</td>";
     webpage += "<td><input type='time' name='" + String(0) + "." + String(p) + ".Stop' value='" + Timer[channel][0].Stop[p] + "'></td>";
     for (int dow = 1; dow < 6; dow++) {
       webpage += "<td><input type='time' name='" + String(dow) + "." + String(p) + ".Stop' value='" + Timer[channel][dow].Stop[p] + "'></td>";
@@ -338,30 +337,30 @@ void TimerSet(int channel) {
 //#########################################################################################
 void Setup() {
   append_HTML_header(noRefresh);
-  webpage += "<h2>Channel Setup</h2><br>";
-  webpage += "<h3>Enter required values</h3>";
+  webpage += "<h2>Налаштування каналів</h2><br>";
+  webpage += "<h3>Виберіть необхідне положення</h3>";
   webpage += "<FORM action='/handlesetup'>";
   webpage += "<table class='centre'>";
   webpage += "<tr>";
   webpage += "<td>Setting</td><td>Value</td>";
   webpage += "</tr>";
   webpage += "<tr>";
-  webpage += "<td><label>Channel-1 Manual Override </label></td>";
+  webpage += "<td><label>Ручне переключення каналу-1 </label></td>";
   webpage += "<td><select name='manualoverride1'><option value='ON'>ON</option>";
   webpage += "<option selected value='OFF'>OFF</option></select></td>"; // ON/OFF
   webpage += "</tr>";
   webpage += "<tr>";
-  webpage += "<td><label>Channel-2 Manual Override </label></td>";
+  webpage += "<td><label>Ручне переключення каналу-2 </label></td>";
   webpage += "<td><select name='manualoverride2'><option value='ON'>ON</option>";
   webpage += "<option selected value='OFF'>OFF</option></select></td>"; // ON/OFF
   webpage += "</tr>";
   webpage += "<tr>";
-  webpage += "<td><label>Channel-3 Manual Override </label></td>";
+  webpage += "<td><label>Ручне переключення каналу-3 </label></td>";
   webpage += "<td><select name='manualoverride3'><option value='ON'>ON</option>";
   webpage += "<option selected value='OFF'>OFF</option></select></td>"; // ON/OFF
   webpage += "</tr>";
   webpage += "<tr>";
-  webpage += "<td><label>Channel-4 Manual Override </label></td>";
+  webpage += "<td><label>Ручне переключення каналу-4 </label></td>";
   webpage += "<td><select name='manualoverride4'><option value='ON'>ON</option>";
   webpage += "<option selected value='OFF'>OFF</option></select></td>"; // ON/OFF
   webpage += "</tr>";
@@ -373,21 +372,21 @@ void Setup() {
 //#########################################################################################
 void Help() {
   append_HTML_header(noRefresh);
-  webpage += "<h2>Help</h2><br>";
+  webpage += "<h2>Довідка</h2><br>";
   webpage += "<div style='text-align: left;font-size:1.1em;'>";
-  webpage += "<br><u><b>Status Page</b></u>";
-  webpage += "<p>Provides a channel overview showing either On or OFF for each channel, READ for ON and GREEN for OFF.</p>";
-  webpage += "<p>Each position has a link to the Channel's timer settings, so clicking on Channel-2 'ON' or 'OFF' goes to the channel's timer settings page.</p>";
-  webpage += "<p>The weekly summary shows 4-channels per day, from 00:00 to 23:30 using the channel's colour to indicate if it is scheduled to be ON.</p>";
-  webpage += "<p>NOTE: the minimum time period that can be displayed is 30-minutes. e.g. 12:05 to 12:20 won't be displayed, but 12:00 to 12:20 will be.</p>";
-  webpage += "<p>This is becuase the minimum resolution is 30-mins for the summary, this does not affect the timing accuracy.</p>";
-  webpage += "<br><u><b>Channel Setting 1 to 4</b></u>";
-  webpage += "<p>Each channel can be set for 7-days per week with up-to 4-periods per day.</p>";
-  webpage += "<p>You can either use a single slot to switch the channel ON between e.g. 09:00 and 13:00</p>";
-  webpage += "<p>or you could set period-1 from 09:00 to 10:00; period-2 from 10:00 to 11:00; period-3 from 11:00 to 12:00 and period-4 from 12:00 to 13:00</p>";
-  webpage += "<u><b>Setup Page</b></u>";
-  webpage += "<p>Enables a channel(s) to be overridden to ON, but only until a valid schedule period comes into effect.</p>";
-  webpage += "<p>The manual-override is cleared when a valid timer period begins.</p>";
+  webpage += "<br><u><b>Сторінка статусу</b></u>";
+  webpage += "<p>Надає огляд каналів, що показує увімкнено або вимкнено для кожного каналу, ЗЕЛЕНИЙ - ON та ЧЕРВОНИЙ - OFF.</p>";
+  webpage += "<p>Кожна позиція має посилання на налаштування таймера каналу, тому, натиснувши Channel-2 'ON' або 'OFF' ви перейдете на сторінку налаштувань таймера каналу.</p>";
+  webpage += "<p>Щотижневий підсумок показує 4 канали на день, з 00:00 до 23:30, використовуйте колір каналу, щоб вказати, чи заплановано його ввімкнення.</p>";
+  webpage += "<p>ПРИМІТКА: мінімальний період часу, який можна відобразити, становить 30 хвилин. наприклад, з 12:05 до 12:20 не відображатиметься, але з 12:00 до 12:20 буде.</p>";
+  webpage += "<p>Це тому, що мінімальна роздільна здатність налаштувань становить 30 хвилин, що не впливає на точність синхронізації.</p>";
+  webpage += "<br><u><b>Налаштування каналів від 1 до 4</b></u>";
+  webpage += "<p>Кожен канал можна налаштувати на 7 днів на тиждень із максимум 4 періодами на день.</p>";
+  webpage += "<p>Ви можете використовувати один слот, щоб увімкнути канал, наприклад, між 09:00 і 13:00</p>";
+  webpage += "<p>або ви можете встановити період-1 з 09:00 до 10:00; період-2 з 10:00 до 11:00; період-3 з 11:00 до 12:00 та період-4 з 12:00 до 13:00</p>";
+  webpage += "<u><b>Сторінка налаштування</b></u>";
+  webpage += "<p>Дозволяє ручне перемикання каналів на ON, але лише доки не набуде чинності попередній період розкладу.</p>";
+  webpage += "<p>Перемикання вручну скасовується, коли починається запрограмований попередній період таймера.</p>";
   webpage += "</div>";
   append_HTML_footer();
 }
@@ -463,8 +462,8 @@ void append_HTML_header(bool refreshMode) {
   webpage += ".centre {margin-left:auto;margin-right:auto;}";
   webpage += "h2 {margin-top:0.3em;margin-bottom:0.3em;font-size:1.4em;}";
   webpage += "h3 {margin-top:0.3em;margin-bottom:0.3em;font-size:1.2em;}";
-  webpage += ".on {color:red;text-decoration:none;}";
-  webpage += ".off {color:limegreen;text-decoration:none;}";
+  webpage += ".on {color:limegreen;text-decoration:none;}";
+  webpage += ".off {color:red;text-decoration:none;}";
   webpage += ".topnav {overflow: hidden;background-color:lightcyan;}";
   webpage += ".topnav a {float:left;color:blue;text-align:center;padding:1em 1.14em;text-decoration:none;font-size:1.3em;}";
   webpage += ".topnav a:hover {background-color:deepskyblue;color:white;}";
@@ -479,15 +478,15 @@ void append_HTML_header(bool refreshMode) {
   webpage += ".ps {font-size:0.7em;padding:0;margin:0}";
   webpage += "footer {padding:0.08em;background-color:cyan;font-size:1.1em;}";
   webpage += ".Circle {border-radius:50%;width:2.7em;height:2.7em;padding:0.2em;text-align:center;font-size:3em;display:inline-flex;justify-content:center;align-items:center;}";
-  webpage += ".c1 {border:0.15em solid yellow;background-color:lightgray;}";
+  webpage += ".c1 {border:0.15em solid orange;background-color:lightgray;}";
   webpage += ".c2 {border:0.15em solid orange;background-color:lightgray;}";
-  webpage += ".c3 {border:0.15em solid red;background-color:lightgray;}";
-  webpage += ".c4 {border:0.15em solid pink;background-color:lightgray;}";
+  webpage += ".c3 {border:0.15em solid orange;background-color:lightgray;}";
+  webpage += ".c4 {border:0.15em solid orange;background-color:lightgray;}";
   webpage += ".coff {background-color:gainsboro;}";
-  webpage += ".c1on {background-color:yellow;}";
+  webpage += ".c1on {background-color:orange;}";
   webpage += ".c2on {background-color:orange;}";
-  webpage += ".c3on {background-color:red;}";
-  webpage += ".c4on {background-color:pink;}";
+  webpage += ".c3on {background-color:orange;}";
+  webpage += ".c4on {background-color:orange;}";
   webpage += ".wifi {padding:3px;position:relative;top:1em;left:0.36em;}";
   webpage += ".wifi, .wifi:before {display:inline-block;border:9px double transparent;border-top-color:currentColor;border-radius:50%;}";
   webpage += ".wifi:before {content:'';width:0;height:0;}";
@@ -509,7 +508,7 @@ void append_HTML_header(bool refreshMode) {
 //#########################################################################################
 void append_HTML_footer() {
   webpage += "<footer>";
-  webpage += "<p class='medium'>4-Channel Controller</p>";
+  webpage += "<p class='medium'>Контролер поливу</p>";
   webpage += "<p class='ps'><i>Copyright &copy;&nbsp;D L Bird " + String(Year) + " V" + version + "</i></p>";
   webpage += "</footer>";
   webpage += "</body></html>";
