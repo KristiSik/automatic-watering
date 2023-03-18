@@ -21,6 +21,7 @@
 #include <SPIFFS.h>                    // Built-in
 #include <ESPAsyncWebSrv.h>         // Built-in
 #include "AsyncTCP.h"                  // https://github.com/me-no-dev/AsyncTCP
+#include "Secrets.h"
 
 //################  VERSION  ###########################################
 String version = "1.0";      // Programme version, see change log at end
@@ -58,8 +59,6 @@ String       Time_str, DoW_str;        // For Date and Time
 settings     Timer[Channels][7];       // Timer settings, n-Channels each 7-days of the week
 
 //################ VARIABLES ################
-const char* ssid       = "yourSSID";               // WiFi SSID     replace with details for your local network
-const char* password   = "yourPASSWORD";           // WiFi Password replace with details for your local network
 const char* Timezone   = "GMT0BST,M3.5.0,M10.5.0/3";
 // Example time zones
 //const char* Timezone = "MET-1METDST,M3.5.0/01,M10.5.0/02"; // Most of Europe
