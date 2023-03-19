@@ -29,7 +29,7 @@ String version = "1.0";      // Programme version, see change log at end
 
 const char* ServerName = "Controller"; // Connect to the server with http://controller.local/ e.g. if name = "myserver" use http://myserver.local/
 
-#define Channels        4              // n-Channels
+#define Channels        12              // n-Channels
 #define NumOfEvents     4              // Number of events per-day, 4 is a practical limit
 #define noRefresh       false          // Set auto refresh OFF
 #define Refresh         true           // Set auto refresh ON
@@ -39,11 +39,27 @@ const char* ServerName = "Controller"; // Connect to the server with http://cont
 #define Channel2        1              // Define Channel-2
 #define Channel3        2              // Define Channel-3
 #define Channel4        3              // Define Channel-4
+#define Channel5        4              // Define Channel-5
+#define Channel6        5              // Define Channel-6
+#define Channel7        6              // Define Channel-7
+#define Channel8        7              // Define Channel-8
+#define Channel9        8              // Define Channel-9
+#define Channel10       9              // Define Channel-10
+#define Channel11       10             // Define Channel-11
+#define Channel12       11             // Define Channel-12
 // Now define the GPIO pins to be used for relay control
 #define Channel1_Pin    0              // Define the Relay Control pin
 #define Channel2_Pin    2              // Define the Relay Control pin
 #define Channel3_Pin    4              // Define the Relay Control pin
-#define Channel4_Pin    14             // Define the Relay Control pin
+#define Channel4_Pin    5              // Define the Relay Control pin
+#define Channel5_Pin    18             // Define the Relay Control pin
+#define Channel6_Pin    19             // Define the Relay Control pin
+#define Channel7_Pin    21             // Define the Relay Control pin
+#define Channel8_Pin    22             // Define the Relay Control pin
+#define Channel9_Pin    23             // Define the Relay Control pin
+#define Channel10_Pin   15             // Define the Relay Control pin
+#define Channel11_Pin   13             // Define the Relay Control pin
+#define Channel12_Pin   12             // Define the Relay Control pin
 
 #define LEDPIN          5              // Define the LED Control pin
 #define ChannelReverse  false          // Set to true for Relay that requires a signal HIGH for ON, usually relays need a LOW to actuate
@@ -87,10 +103,26 @@ String Channel1_State       = "OFF";      // Status of the channel
 String Channel2_State       = "OFF";      // Status of the channel
 String Channel3_State       = "OFF";      // Status of the channel
 String Channel4_State       = "OFF";      // Status of the channel
+String Channel5_State       = "OFF";      // Status of the channel
+String Channel6_State       = "OFF";      // Status of the channel
+String Channel7_State       = "OFF";      // Status of the channel
+String Channel8_State       = "OFF";      // Status of the channel
+String Channel9_State       = "OFF";      // Status of the channel
+String Channel10_State      = "OFF";      // Status of the channel
+String Channel11_State      = "OFF";      // Status of the channel
+String Channel12_State      = "OFF";      // Status of the channel
 bool   Channel1_Override    = false;
 bool   Channel2_Override    = false;
 bool   Channel3_Override    = false;
 bool   Channel4_Override    = false;
+bool   Channel5_Override    = false;
+bool   Channel6_Override    = false;
+bool   Channel7_Override    = false;
+bool   Channel8_Override    = false;
+bool   Channel9_Override    = false;
+bool   Channel10_Override   = false;
+bool   Channel11_Override   = false;
+bool   Channel12_Override   = false;
 
 AsyncWebServer server(80); // Server on IP address port 80 (web-browser default, change to your requirements, e.g. 8080
 
@@ -135,6 +167,46 @@ void setup() {
   // Set handler for '/timer4'
   server.on("/timer4", HTTP_GET, [](AsyncWebServerRequest * request) {
     TimerSet(Channel4);
+    request->send(200, "text/html", webpage);
+  });
+  // Set handler for '/timer5'
+  server.on("/timer5", HTTP_GET, [](AsyncWebServerRequest * request) {
+    TimerSet(Channel5);
+    request->send(200, "text/html", webpage);
+  });
+  // Set handler for '/timer6'
+  server.on("/timer6", HTTP_GET, [](AsyncWebServerRequest * request) {
+    TimerSet(Channel6);
+    request->send(200, "text/html", webpage);
+  });
+  // Set handler for '/timer7'
+  server.on("/timer7", HTTP_GET, [](AsyncWebServerRequest * request) {
+    TimerSet(Channel7);
+    request->send(200, "text/html", webpage);
+  });
+  // Set handler for '/timer8'
+  server.on("/timer8", HTTP_GET, [](AsyncWebServerRequest * request) {
+    TimerSet(Channel8);
+    request->send(200, "text/html", webpage);
+  });
+  // Set handler for '/timer9'
+  server.on("/timer9", HTTP_GET, [](AsyncWebServerRequest * request) {
+    TimerSet(Channel9);
+    request->send(200, "text/html", webpage);
+  });
+  // Set handler for '/timer10'
+  server.on("/timer10", HTTP_GET, [](AsyncWebServerRequest * request) {
+    TimerSet(Channel10);
+    request->send(200, "text/html", webpage);
+  });
+  // Set handler for '/timer11'
+  server.on("/timer11", HTTP_GET, [](AsyncWebServerRequest * request) {
+    TimerSet(Channel11);
+    request->send(200, "text/html", webpage);
+  });
+  // Set handler for '/timer12'
+  server.on("/timer12", HTTP_GET, [](AsyncWebServerRequest * request) {
+    TimerSet(Channel12);
     request->send(200, "text/html", webpage);
   });
   // Set handler for '/setup'
@@ -191,6 +263,94 @@ void setup() {
     SaveSettings();
     request->redirect("/homepage");                       // Go back to home page
   });
+  // Set handler for '/handletimer4' inputs
+  server.on("/handletimer4", HTTP_GET, [](AsyncWebServerRequest * request) {
+    for (byte dow = 0; dow < 7; dow++) {
+      for (byte p = 0; p < 4; p++) {
+        Timer[4][dow].Start[p] = request->arg(String(dow) + "." + String(p) + ".Start");
+        Timer[4][dow].Stop[p]  = request->arg(String(dow) + "." + String(p) + ".Stop");
+      }
+    }
+    SaveSettings();
+    request->redirect("/homepage");                       // Go back to home page
+  });
+  // Set handler for '/handletimer5' inputs
+  server.on("/handletimer5", HTTP_GET, [](AsyncWebServerRequest * request) {
+    for (byte dow = 0; dow < 7; dow++) {
+      for (byte p = 0; p < 4; p++) {
+        Timer[5][dow].Start[p] = request->arg(String(dow) + "." + String(p) + ".Start");
+        Timer[5][dow].Stop[p]  = request->arg(String(dow) + "." + String(p) + ".Stop");
+      }
+    }
+    SaveSettings();
+    request->redirect("/homepage");                       // Go back to home page
+  });
+  // Set handler for '/handletimer6' inputs
+  server.on("/handletimer6", HTTP_GET, [](AsyncWebServerRequest * request) {
+    for (byte dow = 0; dow < 7; dow++) {
+      for (byte p = 0; p < 4; p++) {
+        Timer[6][dow].Start[p] = request->arg(String(dow) + "." + String(p) + ".Start");
+        Timer[6][dow].Stop[p]  = request->arg(String(dow) + "." + String(p) + ".Stop");
+      }
+    }
+    SaveSettings();
+    request->redirect("/homepage");                       // Go back to home page
+  });
+  // Set handler for '/handletimer7' inputs
+  server.on("/handletimer7", HTTP_GET, [](AsyncWebServerRequest * request) {
+    for (byte dow = 0; dow < 7; dow++) {
+      for (byte p = 0; p < 4; p++) {
+        Timer[7][dow].Start[p] = request->arg(String(dow) + "." + String(p) + ".Start");
+        Timer[7][dow].Stop[p]  = request->arg(String(dow) + "." + String(p) + ".Stop");
+      }
+    }
+    SaveSettings();
+    request->redirect("/homepage");                       // Go back to home page
+  });
+  // Set handler for '/handletimer8' inputs
+  server.on("/handletimer8", HTTP_GET, [](AsyncWebServerRequest * request) {
+    for (byte dow = 0; dow < 7; dow++) {
+      for (byte p = 0; p < 4; p++) {
+        Timer[8][dow].Start[p] = request->arg(String(dow) + "." + String(p) + ".Start");
+        Timer[8][dow].Stop[p]  = request->arg(String(dow) + "." + String(p) + ".Stop");
+      }
+    }
+    SaveSettings();
+    request->redirect("/homepage");                       // Go back to home page
+  });
+  // Set handler for '/handletimer9' inputs
+  server.on("/handletimer9", HTTP_GET, [](AsyncWebServerRequest * request) {
+    for (byte dow = 0; dow < 7; dow++) {
+      for (byte p = 0; p < 4; p++) {
+        Timer[9][dow].Start[p] = request->arg(String(dow) + "." + String(p) + ".Start");
+        Timer[9][dow].Stop[p]  = request->arg(String(dow) + "." + String(p) + ".Stop");
+      }
+    }
+    SaveSettings();
+    request->redirect("/homepage");                       // Go back to home page
+  });
+  // Set handler for '/handletimer10' inputs
+  server.on("/handletimer10", HTTP_GET, [](AsyncWebServerRequest * request) {
+    for (byte dow = 0; dow < 7; dow++) {
+      for (byte p = 0; p < 4; p++) {
+        Timer[10][dow].Start[p] = request->arg(String(dow) + "." + String(p) + ".Start");
+        Timer[10][dow].Stop[p]  = request->arg(String(dow) + "." + String(p) + ".Stop");
+      }
+    }
+    SaveSettings();
+    request->redirect("/homepage");                       // Go back to home page
+  });
+  // Set handler for '/handletimer11' inputs
+  server.on("/handletimer11", HTTP_GET, [](AsyncWebServerRequest * request) {
+    for (byte dow = 0; dow < 7; dow++) {
+      for (byte p = 0; p < 4; p++) {
+        Timer[11][dow].Start[p] = request->arg(String(dow) + "." + String(p) + ".Start");
+        Timer[11][dow].Stop[p]  = request->arg(String(dow) + "." + String(p) + ".Stop");
+      }
+    }
+    SaveSettings();
+    request->redirect("/homepage");                       // Go back to home page
+  });
   // Set handler for '/handlesetup' inputs
   server.on("/handlesetup", HTTP_GET, [](AsyncWebServerRequest * request) {
     if (request->hasArg("manualoverride1")) {
@@ -208,6 +368,38 @@ void setup() {
     if (request->hasArg("manualoverride4")) {
       String stringArg = request->arg("manualoverride4");
       if (stringArg == "ON") Channel4_Override = true; else Channel4_Override = false;
+    }
+    if (request->hasArg("manualoverride5")) {
+      String stringArg = request->arg("manualoverride5");
+      if (stringArg == "ON") Channel5_Override = true; else Channel5_Override = false;
+    }
+    if (request->hasArg("manualoverride6")) {
+      String stringArg = request->arg("manualoverride6");
+      if (stringArg == "ON") Channel6_Override = true; else Channel6_Override = false;
+    }
+    if (request->hasArg("manualoverride7")) {
+      String stringArg = request->arg("manualoverride7");
+      if (stringArg == "ON") Channel7_Override = true; else Channel7_Override = false;
+    }
+    if (request->hasArg("manualoverride8")) {
+      String stringArg = request->arg("manualoverride8");
+      if (stringArg == "ON") Channel8_Override = true; else Channel8_Override = false;
+    }
+    if (request->hasArg("manualoverride9")) {
+      String stringArg = request->arg("manualoverride9");
+      if (stringArg == "ON") Channel9_Override = true; else Channel9_Override = false;
+    }
+    if (request->hasArg("manualoverride10")) {
+      String stringArg = request->arg("manualoverride10");
+      if (stringArg == "ON") Channel10_Override = true; else Channel10_Override = false;
+    }
+    if (request->hasArg("manualoverride11")) {
+      String stringArg = request->arg("manualoverride11");
+      if (stringArg == "ON") Channel11_Override = true; else Channel11_Override = false;
+    }
+    if (request->hasArg("manualoverride12")) {
+      String stringArg = request->arg("manualoverride12");
+      if (stringArg == "ON") Channel12_Override = true; else Channel12_Override = false;
     }
     SaveSettings();
     request->redirect("/homepage");                       // Go back to home page
@@ -229,49 +421,39 @@ void Homepage() {
   bool TimerSummary[4][7][48]; // 7 days each with 48 timer periods
   append_HTML_header(Refresh);
   webpage += "<h2>Статус каналу @ " + Time_str + "</h2><br>";
-  webpage += "<table class='centre'>";
+  webpage += "<table class='centre channels-table'>";
   webpage += "<tr>";
-  webpage += " <td>Канал-1</td>";
-  webpage += " <td>Канал-2</td>";
-  webpage += " <td>Канал-3</td>";
-  webpage += " <td>Канал-4</td>";
+  webpage += " <td>Канал-1<br>Клумба-1</td>";
+  webpage += " <td>Канал-2<br>Клумба-2</td>";
+  webpage += " <td>Канал-3<br>Клумба-3</td>";
+  webpage += " <td>Канал-4<br>Клумба-4</td>";
+  webpage += " <td>Канал-5<br>Клумба-5</td>";
+  webpage += " <td>Канал-6<br>Клумба-6</td>";
   webpage += "</tr>";
   webpage += "<tr>";
-  webpage += " <td><div class='c1 Circle'><a class='" + String((Channel1_State == "ON" ? "on'" : "off'")) + " href='/timer1'>" + String(Channel1_State) + "</a></div></td>";
-  webpage += " <td><div class='c2 Circle'><a class='" + String((Channel2_State == "ON" ? "on'" : "off'")) + " href='/timer2'>" + String(Channel2_State) + "</a></div></td>";
-  webpage += " <td><div class='c3 Circle'><a class='" + String((Channel3_State == "ON" ? "on'" : "off'")) + " href='/timer3'>" + String(Channel3_State) + "</a></div></td>";
-  webpage += " <td><div class='c4 Circle'><a class='" + String((Channel4_State == "ON" ? "on'" : "off'")) + " href='/timer4'>" + String(Channel4_State) + "</a></div></td>";
+  webpage += " <td><div class='circle'><a class='" + String((Channel1_State == "ON" ? "on'" : "off'")) + " href='/timer1'>" + String(Channel1_State) + "</a></div></td>";
+  webpage += " <td><div class='circle'><a class='" + String((Channel2_State == "ON" ? "on'" : "off'")) + " href='/timer2'>" + String(Channel2_State) + "</a></div></td>";
+  webpage += " <td><div class='circle'><a class='" + String((Channel3_State == "ON" ? "on'" : "off'")) + " href='/timer3'>" + String(Channel3_State) + "</a></div></td>";
+  webpage += " <td><div class='circle'><a class='" + String((Channel4_State == "ON" ? "on'" : "off'")) + " href='/timer4'>" + String(Channel4_State) + "</a></div></td>";
+  webpage += " <td><div class='circle'><a class='" + String((Channel5_State == "ON" ? "on'" : "off'")) + " href='/timer5'>" + String(Channel5_State) + "</a></div></td>";
+  webpage += " <td><div class='circle'><a class='" + String((Channel6_State == "ON" ? "on'" : "off'")) + " href='/timer6'>" + String(Channel6_State) + "</a></div></td>";
   webpage += "</tr>";
-  webpage += "</table>";
-  webpage += "<br>";
-  webpage += "<h3>Звіт розкладів каналів</h3>";
-  webpage += "<table class='centre sum'>";
   webpage += "<tr>";
-  webpage += "<td>Time</td>";
-  webpage += "<td colspan='4'>" + Timer[0][0].DoW + "</td>";
-  for (byte dow = 1; dow < 6; dow++) webpage += "<td colspan='4'>" + Timer[0][dow].DoW + "</td>";
-  webpage += "<td colspan='4'>" + Timer[0][6].DoW + "</td>";
+  webpage += " <td>Канал-7<br>Клумба-7</td>";
+  webpage += " <td>Канал-8<br>Клумба-8</td>";
+  webpage += " <td>Канал-9<br>Клумба-9</td>";
+  webpage += " <td>Канал-10<br>Клумба-10</td>";
+  webpage += " <td>Канал-11<br>Клумба-11</td>";
+  webpage += " <td>Канал-12<br>Клумба-12</td>";
   webpage += "</tr>";
-  String TimeNow_Str;
-  for (byte channel = 0; channel < Channels; channel++) {
-    for (byte DoW = 0; DoW < 7; DoW++) {
-      for (byte timer = 0; timer < 48; timer++) { // 0 to 24 hours in mins, reported in 15-min increments hence 60 / (2) = 30
-        TimeNow_Str = String((timer / 2 < 10 ? "0" : "")) + String(timer / 2) + ":" + String(((timer % 2) * 30) < 10 ? "0" : "") + String((timer % 2) * 30);
-        TimerSummary[channel][DoW][timer] = CheckTime(channel, String(DoW), TimeNow_Str);
-      }
-    }
-  }
-  for (byte timer = 0; timer < 48; timer++) { // 0 to 24 hours in mins, reported in 30-min increments hence 60 / (2) = 30
-    webpage += "<tr>";
-    webpage += "<td>" + String((timer / 2 < 10 ? "0" : "")) + String(timer / 2) + ":" + String(((timer % 2) * 30) < 10 ? "0" : "") + String((timer % 2) * 30) + "</td>"; // 4 x 15-min intervals per hour
-    for (byte DoW = 0; DoW < 7; DoW++) {
-      webpage += "<td class='" + String(TimerSummary[0][DoW][timer] ? "c1on" : "coff") + "'></td>";
-      webpage += "<td class='" + String(TimerSummary[1][DoW][timer] ? "c2on" : "coff") + "'></td>";
-      webpage += "<td class='" + String(TimerSummary[2][DoW][timer] ? "c3on" : "coff") + "'></td>";
-      webpage += "<td class='" + String(TimerSummary[3][DoW][timer] ? "c4on" : "coff") + "'></td>";
-    }
-    webpage += "</tr>";
-  }
+  webpage += "<tr>";
+  webpage += " <td><div class='circle'><a class='" + String((Channel7_State == "ON" ? "on'" : "off'")) + " href='/timer7'>" + String(Channel7_State) + "</a></div></td>";
+  webpage += " <td><div class='circle'><a class='" + String((Channel8_State == "ON" ? "on'" : "off'")) + " href='/timer8'>" + String(Channel8_State) + "</a></div></td>";
+  webpage += " <td><div class='circle'><a class='" + String((Channel9_State == "ON" ? "on'" : "off'")) + " href='/timer9'>" + String(Channel9_State) + "</a></div></td>";
+  webpage += " <td><div class='circle'><a class='" + String((Channel10_State == "ON" ? "on'" : "off'")) + " href='/timer10'>" + String(Channel10_State) + "</a></div></td>";
+  webpage += " <td><div class='circle'><a class='" + String((Channel11_State == "ON" ? "on'" : "off'")) + " href='/timer11'>" + String(Channel11_State) + "</a></div></td>";
+  webpage += " <td><div class='circle'><a class='" + String((Channel12_State == "ON" ? "on'" : "off'")) + " href='/timer12'>" + String(Channel12_State) + "</a></div></td>";
+  webpage += "</tr>";
   webpage += "</table>";
   webpage += "<br>";
   append_HTML_footer();
@@ -290,8 +472,8 @@ bool CheckTime(byte channel, String DoW_Str, String TimeNow_Str) {
 //#########################################################################################
 void TimerSet(int channel) {
   append_HTML_header(noRefresh);
-  webpage += "<h2>Канал-" + String(channel + 1) + " Налаштування розкладу</h2><br>";
-  webpage += "<h3>Введіть необхідний час</h3><br>";
+  webpage += "<h2>Налаштування розкладу Канал-" + String(channel + 1) + "</h2><br>";
+  webpage += "<h3>Клумба-" + String(channel + 1) + "</h3><br>";
   webpage += "<FORM action='/handletimer" + String(channel) + "'>";
   webpage += "<table class='centre timer'>";
   webpage += "<col><col><col><col><col><col><col><col>";
@@ -329,7 +511,7 @@ void TimerSet(int channel) {
   }
   webpage += "</table>";
   webpage += "<div class='centre'>";
-  webpage += "<br><input type='submit' value='Enter'><br><br>";
+  webpage += "<br><input type='submit' value='Зберегти'><br><br>";
   webpage += "</div></form>";
   append_HTML_footer();
 }
@@ -472,15 +654,11 @@ void append_HTML_header(bool refreshMode) {
   webpage += "table.sum tr {padding:0.2em 0.5em 0.2em 0.5em;font-size:1.1em;border:1px solid blue;}";
   webpage += "table.sum td {padding:0.2em 0.6em 0.2em 0.6em;font-size:1.1em;border:1px solid blue;}";
   webpage += "col:first-child {background:lightcyan}col:nth-child(2){background:#CCC}col:nth-child(8){background:#CCC}";
-  webpage += "tr:first-child {background:lightcyan}";
+  webpage += "tr:first-child, .channels-table tr:nth-child(odd) {background:lightcyan}";
   webpage += ".medium {font-size:1.4em;padding:0;margin:0}";
   webpage += ".ps {font-size:0.7em;padding:0;margin:0}";
   webpage += "footer {padding:0.08em;background-color:cyan;font-size:1.1em;}";
-  webpage += ".Circle {border-radius:50%;width:2.7em;height:2.7em;padding:0.2em;text-align:center;font-size:3em;display:inline-flex;justify-content:center;align-items:center;}";
-  webpage += ".c1 {border:0.15em solid orange;background-color:lightgray;}";
-  webpage += ".c2 {border:0.15em solid orange;background-color:lightgray;}";
-  webpage += ".c3 {border:0.15em solid orange;background-color:lightgray;}";
-  webpage += ".c4 {border:0.15em solid orange;background-color:lightgray;}";
+  webpage += ".circle {border:0.15em solid orange;background-color:lightgray;border-radius:50%;width:2.7em;height:2.7em;padding:0.2em;text-align:center;font-size:3em;display:inline-flex;justify-content:center;align-items:center;}";
   webpage += ".coff {background-color:gainsboro;}";
   webpage += ".c1on {background-color:orange;}";
   webpage += ".c2on {background-color:orange;}";
@@ -492,13 +670,13 @@ void append_HTML_header(bool refreshMode) {
   webpage += "</style></head>";
   webpage += "<body>";
   webpage += "<div class='topnav'>";
-  webpage += "<a href='/'>Status</a>";
-  webpage += "<a href='timer1'>Channel-1</a>";
-  webpage += "<a href='timer2'>Channel-2</a>";
-  webpage += "<a href='timer3'>Channel-3</a>";
-  webpage += "<a href='timer4'>Channel-4</a>";
-  webpage += "<a href='setup'>Setup</a>";
-  webpage += "<a href='help'>Help</a>";
+  webpage += "<a href='/'>Статус</a>";
+  // webpage += "<a href='timer1'>Channel-1</a>";
+  // webpage += "<a href='timer2'>Channel-2</a>";
+  // webpage += "<a href='timer3'>Channel-3</a>";
+  // webpage += "<a href='timer4'>Channel-4</a>";
+  webpage += "<a href='setup'>Ручне налаштування</a>";
+  webpage += "<a href='help'>Довідка</a>";
   webpage += "<a href=''></a>"; // Padding for header
   webpage += "<a href=''></a>"; // Padding for header
   webpage += "<div class='wifi'></div><span>" + WiFiSignal() + "</span>";
