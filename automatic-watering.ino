@@ -91,7 +91,7 @@ const char* Timezone   = "GMT0BST,M3.5.0,M10.5.0/3";
 String sitetitle            = "Контролер поливу";
 String Year                 = "березень 2023";     // For the footer line
 
-bool   ManualOverride       = false;      // Manual override
+bool   ManualOverride       = true;      // Manual override
 String Units                = "M";        // or Units = "I" for °F and 12:12pm time format
 
 String webpage              = "";         // General purpose variables to hold HTML code for display
@@ -207,11 +207,6 @@ void setup() {
   // Set handler for '/timer12'
   server.on("/timer12", HTTP_GET, [](AsyncWebServerRequest * request) {
     TimerSet(Channel12);
-    request->send(200, "text/html", webpage);
-  });
-  // Set handler for '/setup'
-  server.on("/setup", HTTP_GET, [](AsyncWebServerRequest * request) {
-    Setup();
     request->send(200, "text/html", webpage);
   });
   // Set handler for '/help'
@@ -402,10 +397,11 @@ void setup() {
       if (stringArg == "ON") Channel12_Override = true; else Channel12_Override = false;
     }
     SaveSettings();
+    delay(1000);                                          // Wait for channel to be updated in main thread, so the home page will display correct channel state
     request->redirect("/homepage");                       // Go back to home page
   });
   server.begin();
-  LastTimerSwitchCheck = millis() + TimerCheckDuration;   // preload timer value with update duration
+  LastTimerSwitchCheck = millis() + TimerCheckDuration;   // Preload timer value with update duration
 }
 //#########################################################################################
 void loop() {
@@ -431,12 +427,12 @@ void Homepage() {
   webpage += " <td>Канал-6<br>Клумба-6</td>";
   webpage += "</tr>";
   webpage += "<tr>";
-  webpage += " <td><div class='circle'><a class='" + String((Channel1_State == "ON" ? "on'" : "off'")) + " href='/timer1'>" + String(Channel1_State) + "</a></div></td>";
-  webpage += " <td><div class='circle'><a class='" + String((Channel2_State == "ON" ? "on'" : "off'")) + " href='/timer2'>" + String(Channel2_State) + "</a></div></td>";
-  webpage += " <td><div class='circle'><a class='" + String((Channel3_State == "ON" ? "on'" : "off'")) + " href='/timer3'>" + String(Channel3_State) + "</a></div></td>";
-  webpage += " <td><div class='circle'><a class='" + String((Channel4_State == "ON" ? "on'" : "off'")) + " href='/timer4'>" + String(Channel4_State) + "</a></div></td>";
-  webpage += " <td><div class='circle'><a class='" + String((Channel5_State == "ON" ? "on'" : "off'")) + " href='/timer5'>" + String(Channel5_State) + "</a></div></td>";
-  webpage += " <td><div class='circle'><a class='" + String((Channel6_State == "ON" ? "on'" : "off'")) + " href='/timer6'>" + String(Channel6_State) + "</a></div></td>";
+  webpage += " <td><div class='circle'><a class='" + String((Channel1_State == "ON" ? "on'" : "off'")) + " href='/handlesetup?manualoverride1=" + String((Channel1_State == "ON" ? "OFF'" : "ON'")) + "'>" + String(Channel1_State) + "</a></div></td>";
+  webpage += " <td><div class='circle'><a class='" + String((Channel2_State == "ON" ? "on'" : "off'")) + " href='/handlesetup?manualoverride2=" + String((Channel2_State == "ON" ? "OFF'" : "ON'")) + "'>" + String(Channel2_State) + "</a></div></td>";
+  webpage += " <td><div class='circle'><a class='" + String((Channel3_State == "ON" ? "on'" : "off'")) + " href='/handlesetup?manualoverride3=" + String((Channel3_State == "ON" ? "OFF'" : "ON'")) + "'>" + String(Channel3_State) + "</a></div></td>";
+  webpage += " <td><div class='circle'><a class='" + String((Channel4_State == "ON" ? "on'" : "off'")) + " href='/handlesetup?manualoverride4=" + String((Channel4_State == "ON" ? "OFF'" : "ON'")) + "'>" + String(Channel4_State) + "</a></div></td>";
+  webpage += " <td><div class='circle'><a class='" + String((Channel5_State == "ON" ? "on'" : "off'")) + " href='/handlesetup?manualoverride5=" + String((Channel5_State == "ON" ? "OFF'" : "ON'")) + "'>" + String(Channel5_State) + "</a></div></td>";
+  webpage += " <td><div class='circle'><a class='" + String((Channel6_State == "ON" ? "on'" : "off'")) + " href='/handlesetup?manualoverride6=" + String((Channel6_State == "ON" ? "OFF'" : "ON'")) + "'>" + String(Channel6_State) + "</a></div></td>";
   webpage += "</tr>";
   webpage += "<tr>";
   webpage += " <td>Канал-7<br>Клумба-7</td>";
@@ -447,12 +443,12 @@ void Homepage() {
   webpage += " <td>Канал-12<br>Клумба-12</td>";
   webpage += "</tr>";
   webpage += "<tr>";
-  webpage += " <td><div class='circle'><a class='" + String((Channel7_State == "ON" ? "on'" : "off'")) + " href='/timer7'>" + String(Channel7_State) + "</a></div></td>";
-  webpage += " <td><div class='circle'><a class='" + String((Channel8_State == "ON" ? "on'" : "off'")) + " href='/timer8'>" + String(Channel8_State) + "</a></div></td>";
-  webpage += " <td><div class='circle'><a class='" + String((Channel9_State == "ON" ? "on'" : "off'")) + " href='/timer9'>" + String(Channel9_State) + "</a></div></td>";
-  webpage += " <td><div class='circle'><a class='" + String((Channel10_State == "ON" ? "on'" : "off'")) + " href='/timer10'>" + String(Channel10_State) + "</a></div></td>";
-  webpage += " <td><div class='circle'><a class='" + String((Channel11_State == "ON" ? "on'" : "off'")) + " href='/timer11'>" + String(Channel11_State) + "</a></div></td>";
-  webpage += " <td><div class='circle'><a class='" + String((Channel12_State == "ON" ? "on'" : "off'")) + " href='/timer12'>" + String(Channel12_State) + "</a></div></td>";
+  webpage += " <td><div class='circle'><a class='" + String((Channel7_State == "ON" ? "on'" : "off'")) + " href='/handlesetup?manualoverride7=" + String((Channel7_State == "ON" ? "OFF'" : "ON'")) + "'>" + String(Channel7_State) + "</a></div></td>";
+  webpage += " <td><div class='circle'><a class='" + String((Channel8_State == "ON" ? "on'" : "off'")) + " href='/handlesetup?manualoverride8=" + String((Channel8_State == "ON" ? "OFF'" : "ON'")) + "'>" + String(Channel8_State) + "</a></div></td>";
+  webpage += " <td><div class='circle'><a class='" + String((Channel9_State == "ON" ? "on'" : "off'")) + " href='/handlesetup?manualoverride9=" + String((Channel9_State == "ON" ? "OFF'" : "ON'")) + "'>" + String(Channel9_State) + "</a></div></td>";
+  webpage += " <td><div class='circle'><a class='" + String((Channel10_State == "ON" ? "on'" : "off'")) + " href='/handlesetup?manualoverride10=" + String((Channel10_State == "ON" ? "OFF'" : "ON'")) + "'>" + String(Channel10_State) + "</a></div></td>";
+  webpage += " <td><div class='circle'><a class='" + String((Channel11_State == "ON" ? "on'" : "off'")) + " href='/handlesetup?manualoverride11=" + String((Channel11_State == "ON" ? "OFF'" : "ON'")) + "'>" + String(Channel11_State) + "</a></div></td>";
+  webpage += " <td><div class='circle'><a class='" + String((Channel12_State == "ON" ? "on'" : "off'")) + " href='/handlesetup?manualoverride12=" + String((Channel12_State == "ON" ? "OFF'" : "ON'")) + "'>" + String(Channel12_State) + "</a></div></td>";
   webpage += "</tr>";
   webpage += "</table>";
   webpage += "<br>";
@@ -516,41 +512,6 @@ void TimerSet(int channel) {
   append_HTML_footer();
 }
 //#########################################################################################
-void Setup() {
-  append_HTML_header(noRefresh);
-  webpage += "<h2>Налаштування каналів</h2><br>";
-  webpage += "<h3>Виберіть необхідне положення</h3>";
-  webpage += "<FORM action='/handlesetup'>";
-  webpage += "<table class='centre'>";
-  webpage += "<tr>";
-  webpage += "<td>Setting</td><td>Value</td>";
-  webpage += "</tr>";
-  webpage += "<tr>";
-  webpage += "<td><label>Ручне переключення каналу-1 </label></td>";
-  webpage += "<td><select name='manualoverride1'><option value='ON'>ON</option>";
-  webpage += "<option selected value='OFF'>OFF</option></select></td>"; // ON/OFF
-  webpage += "</tr>";
-  webpage += "<tr>";
-  webpage += "<td><label>Ручне переключення каналу-2 </label></td>";
-  webpage += "<td><select name='manualoverride2'><option value='ON'>ON</option>";
-  webpage += "<option selected value='OFF'>OFF</option></select></td>"; // ON/OFF
-  webpage += "</tr>";
-  webpage += "<tr>";
-  webpage += "<td><label>Ручне переключення каналу-3 </label></td>";
-  webpage += "<td><select name='manualoverride3'><option value='ON'>ON</option>";
-  webpage += "<option selected value='OFF'>OFF</option></select></td>"; // ON/OFF
-  webpage += "</tr>";
-  webpage += "<tr>";
-  webpage += "<td><label>Ручне переключення каналу-4 </label></td>";
-  webpage += "<td><select name='manualoverride4'><option value='ON'>ON</option>";
-  webpage += "<option selected value='OFF'>OFF</option></select></td>"; // ON/OFF
-  webpage += "</tr>";
-  webpage += "</table>";
-  webpage += "<br><input type='submit' value='Enter'><br><br>";
-  webpage += "</form>";
-  append_HTML_footer();
-}
-//#########################################################################################
 void Help() {
   append_HTML_header(noRefresh);
   webpage += "<h2>Довідка</h2><br>";
@@ -579,6 +540,14 @@ void CheckTimerEvent() {
   Channel2_State = "OFF";                               // Switch Channel OFF until the schedule decides otherwise
   Channel3_State = "OFF";                               // Switch Channel OFF until the schedule decides otherwise
   Channel4_State = "OFF";                               // Switch Channel OFF until the schedule decides otherwise
+  Channel5_State = "OFF";                               // Switch Channel OFF until the schedule decides otherwise
+  Channel6_State = "OFF";                               // Switch Channel OFF until the schedule decides otherwise
+  Channel7_State = "OFF";                               // Switch Channel OFF until the schedule decides otherwise
+  Channel8_State = "OFF";                               // Switch Channel OFF until the schedule decides otherwise
+  Channel9_State = "OFF";                               // Switch Channel OFF until the schedule decides otherwise
+  Channel10_State = "OFF";                              // Switch Channel OFF until the schedule decides otherwise
+  Channel11_State = "OFF";                              // Switch Channel OFF until the schedule decides otherwise
+  Channel12_State = "OFF";                              // Switch Channel OFF until the schedule decides otherwise
   if (Channel1_Override) {                              // If manual override is requested then turn the Channel on
     Channel1_State = "ON";
     ActuateChannel(ON, Channel1, Channel1_Pin);         // Switch Channel ON if requested
@@ -595,6 +564,38 @@ void CheckTimerEvent() {
     Channel4_State = "ON";
     ActuateChannel(ON, Channel4, Channel4_Pin);         // Switch Channel ON if requested
   }
+  if (Channel5_Override) {
+    Channel5_State = "ON";
+    ActuateChannel(ON, Channel5, Channel5_Pin);         // Switch Channel ON if requested
+  }
+  if (Channel6_Override) {
+    Channel6_State = "ON";
+    ActuateChannel(ON, Channel6, Channel6_Pin);         // Switch Channel ON if requested
+  }
+  if (Channel7_Override) {
+    Channel7_State = "ON";
+    ActuateChannel(ON, Channel7, Channel7_Pin);         // Switch Channel ON if requested
+  }
+  if (Channel8_Override) {
+    Channel8_State = "ON";
+    ActuateChannel(ON, Channel8, Channel8_Pin);         // Switch Channel ON if requested
+  }
+  if (Channel9_Override) {
+    Channel9_State = "ON";
+    ActuateChannel(ON, Channel9, Channel9_Pin);         // Switch Channel ON if requested
+  }
+  if (Channel10_Override) {
+    Channel10_State = "ON";
+    ActuateChannel(ON, Channel10, Channel10_Pin);       // Switch Channel ON if requested
+  }
+  if (Channel11_Override) {
+    Channel11_State = "ON";
+    ActuateChannel(ON, Channel11, Channel11_Pin);       // Switch Channel ON if requested
+  }
+  if (Channel12_Override) {
+    Channel12_State = "ON";
+    ActuateChannel(ON, Channel12, Channel12_Pin);       // Switch Channel ON if requested
+  }
   for (byte channel = 0; channel < Channels; channel++) {
     for (byte dow = 0; dow < 7; dow++) {                // Look for any valid timer events, if found turn the heating on
       for (byte p = 0; p < NumOfEvents; p++) {
@@ -605,6 +606,14 @@ void CheckTimerEvent() {
           if (channel == 1) Channel2_State = "ON";
           if (channel == 2) Channel3_State = "ON";
           if (channel == 3) Channel4_State = "ON";
+          if (channel == 4) Channel5_State = "ON";
+          if (channel == 5) Channel6_State = "ON";
+          if (channel == 6) Channel7_State = "ON";
+          if (channel == 7) Channel8_State = "ON";
+          if (channel == 8) Channel9_State = "ON";
+          if (channel == 9) Channel10_State = "ON";
+          if (channel == 10) Channel11_State = "ON";
+          if (channel == 11) Channel12_State = "ON";
         }
       }
     }
@@ -613,6 +622,14 @@ void CheckTimerEvent() {
   if (Channel2_State == "ON") ActuateChannel(ON, Channel2, Channel2_Pin); else ActuateChannel(OFF, Channel2, Channel2_Pin);
   if (Channel3_State == "ON") ActuateChannel(ON, Channel3, Channel3_Pin); else ActuateChannel(OFF, Channel3, Channel3_Pin);
   if (Channel4_State == "ON") ActuateChannel(ON, Channel4, Channel4_Pin); else ActuateChannel(OFF, Channel4, Channel4_Pin);
+  if (Channel5_State == "ON") ActuateChannel(ON, Channel5, Channel5_Pin); else ActuateChannel(OFF, Channel5, Channel5_Pin);
+  if (Channel6_State == "ON") ActuateChannel(ON, Channel6, Channel6_Pin); else ActuateChannel(OFF, Channel6, Channel6_Pin);
+  if (Channel7_State == "ON") ActuateChannel(ON, Channel7, Channel7_Pin); else ActuateChannel(OFF, Channel7, Channel7_Pin);
+  if (Channel8_State == "ON") ActuateChannel(ON, Channel8, Channel8_Pin); else ActuateChannel(OFF, Channel8, Channel8_Pin);
+  if (Channel9_State == "ON") ActuateChannel(ON, Channel9, Channel9_Pin); else ActuateChannel(OFF, Channel9, Channel9_Pin);
+  if (Channel10_State == "ON") ActuateChannel(ON, Channel10, Channel10_Pin); else ActuateChannel(OFF, Channel10, Channel10_Pin);
+  if (Channel11_State == "ON") ActuateChannel(ON, Channel11, Channel11_Pin); else ActuateChannel(OFF, Channel11, Channel11_Pin);
+  if (Channel12_State == "ON") ActuateChannel(ON, Channel12, Channel12_Pin); else ActuateChannel(OFF, Channel12, Channel12_Pin);
 }
 //#########################################################################################
 void ActuateChannel(bool demand, byte channel, byte channel_pin) {
@@ -628,7 +645,15 @@ void ActuateChannel(bool demand, byte channel, byte channel_pin) {
   if (Channel1_State == "ON" ||        // Switch ON LED if any channel is ON otherwise switch ot OFF
       Channel2_State == "ON" ||
       Channel3_State == "ON" ||
-      Channel4_State == "ON") digitalWrite(LEDPIN, LOW); else digitalWrite(LEDPIN, HIGH);
+      Channel4_State == "ON" ||
+      Channel5_State == "ON" ||
+      Channel6_State == "ON" ||
+      Channel7_State == "ON" ||
+      Channel8_State == "ON" ||
+      Channel9_State == "ON" ||
+      Channel10_State == "ON" ||
+      Channel11_State == "ON" ||
+      Channel12_State == "ON") digitalWrite(LEDPIN, LOW); else digitalWrite(LEDPIN, HIGH);
 }
 //#########################################################################################
 void append_HTML_header(bool refreshMode) {
@@ -665,21 +690,15 @@ void append_HTML_header(bool refreshMode) {
   webpage += ".c3on {background-color:orange;}";
   webpage += ".c4on {background-color:orange;}";
   webpage += ".wifi {padding:3px;position:relative;top:1em;left:0.36em;}";
+  webpage += ".wifi-info {float: right; margin-right: 20px;margin-top: 5px;}";
   webpage += ".wifi, .wifi:before {display:inline-block;border:9px double transparent;border-top-color:currentColor;border-radius:50%;}";
   webpage += ".wifi:before {content:'';width:0;height:0;}";
   webpage += "</style></head>";
   webpage += "<body>";
   webpage += "<div class='topnav'>";
   webpage += "<a href='/'>Статус</a>";
-  // webpage += "<a href='timer1'>Channel-1</a>";
-  // webpage += "<a href='timer2'>Channel-2</a>";
-  // webpage += "<a href='timer3'>Channel-3</a>";
-  // webpage += "<a href='timer4'>Channel-4</a>";
-  webpage += "<a href='setup'>Ручне налаштування</a>";
   webpage += "<a href='help'>Довідка</a>";
-  webpage += "<a href=''></a>"; // Padding for header
-  webpage += "<a href=''></a>"; // Padding for header
-  webpage += "<div class='wifi'></div><span>" + WiFiSignal() + "</span>";
+  webpage += "<div class='wifi-info'><div class='wifi'></div><span>" + WiFiSignal() + "</span></div>";
   webpage += "</div><br>";
 }
 //#########################################################################################
@@ -726,6 +745,14 @@ void SetupSystem() {
   pinMode(Channel2_Pin, OUTPUT);
   pinMode(Channel3_Pin, OUTPUT);
   pinMode(Channel4_Pin, OUTPUT);
+  pinMode(Channel5_Pin, OUTPUT);
+  pinMode(Channel6_Pin, OUTPUT);
+  pinMode(Channel7_Pin, OUTPUT);
+  pinMode(Channel8_Pin, OUTPUT);
+  pinMode(Channel9_Pin, OUTPUT);
+  pinMode(Channel10_Pin, OUTPUT);
+  pinMode(Channel11_Pin, OUTPUT);
+  pinMode(Channel12_Pin, OUTPUT);
   pinMode(LEDPIN, OUTPUT);
 }
 //#########################################################################################
