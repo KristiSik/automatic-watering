@@ -75,7 +75,7 @@ String       Time_str, DoW_str;        // For Date and Time
 settings     Timer[Channels][7];       // Timer settings, n-Channels each 7-days of the week
 
 //################ VARIABLES ################
-const char* Timezone   = "GMT0BST,M3.5.0,M10.5.0/3";
+const char* Timezone   = "UTC";
 // Example time zones
 //const char* Timezone = "MET-1METDST,M3.5.0/01,M10.5.0/02"; // Most of Europe
 //const char* Timezone = "CET-1CEST,M3.5.0,M10.5.0/3";       // Central Europe
@@ -757,7 +757,7 @@ void SetupSystem() {
 }
 //#########################################################################################
 boolean SetupTime() {
-  configTime(0, 0, "time.nist.gov");                               // (gmtOffset_sec, daylightOffset_sec, ntpServer)
+  configTime(60 * 60 * 2, 60 * 60 * 1, "time.nist.gov");                               // (gmtOffset_sec, daylightOffset_sec, ntpServer)
   setenv("TZ", Timezone, 1);                                       // setenv()adds "TZ" variable to the environment, only used if set to 1, 0 means no change
   tzset();
   delay(200);
