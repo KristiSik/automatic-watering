@@ -68,6 +68,7 @@ struct settings {
   String DoW;                          // Day of Week for the programmed event
   String Start[NumOfEvents];           // Start time
   String Stop[NumOfEvents];            // End time
+  bool overridenValue = false;
 };
 
 String       DataFile = "params.txt";  // Storage file name on flash
@@ -348,6 +349,11 @@ void setup() {
   });
   // Set handler for '/handlesetup' inputs
   server.on("/handlesetup", HTTP_GET, [](AsyncWebServerRequest * request) {
+    if (!ManualOverride) {
+      request->redirect("/homepage");
+      return;
+    }
+
     if (request->hasArg("manualoverride1")) {
       String stringArg = request->arg("manualoverride1");
       if (stringArg == "ON") Channel1_Override = true; else Channel1_Override = false;
