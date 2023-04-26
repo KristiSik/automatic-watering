@@ -22,6 +22,7 @@
 #include <ESPAsyncWebSrv.h>         // Built-in
 #include "AsyncTCP.h"                  // https://github.com/me-no-dev/AsyncTCP
 #include "Secrets.h"
+#include "Dusk2Dawn.h"
 
 //################  VERSION  ###########################################
 String version = "1.0";      // Programme version, see change log at end
@@ -29,7 +30,7 @@ String version = "1.0";      // Programme version, see change log at end
 
 const char* ServerName = "Controller"; // Connect to the server with http://controller.local/ e.g. if name = "myserver" use http://myserver.local/
 
-#define Channels        12              // n-Channels
+#define Channels        12             // n-Channels
 #define NumOfEvents     4              // Number of events per-day, 4 is a practical limit
 #define noRefresh       false          // Set auto refresh OFF
 #define Refresh         true           // Set auto refresh ON
@@ -47,11 +48,12 @@ const char* ServerName = "Controller"; // Connect to the server with http://cont
 #define Channel10       9              // Define Channel-10
 #define Channel11       10             // Define Channel-11
 #define Channel12       11             // Define Channel-12
+#define Channel13       12             // Define Channel-13
 // Now define the GPIO pins to be used for relay control
 #define Channel1_Pin    0              // Define the Relay Control pin
 #define Channel2_Pin    2              // Define the Relay Control pin
 #define Channel3_Pin    4              // Define the Relay Control pin
-#define Channel4_Pin    5              // Define the Relay Control pin
+#define Channel4_Pin    18              // Define the Relay Control pin
 #define Channel5_Pin    18             // Define the Relay Control pin
 #define Channel6_Pin    19             // Define the Relay Control pin
 #define Channel7_Pin    21             // Define the Relay Control pin
@@ -60,6 +62,7 @@ const char* ServerName = "Controller"; // Connect to the server with http://cont
 #define Channel10_Pin   15             // Define the Relay Control pin
 #define Channel11_Pin   13             // Define the Relay Control pin
 #define Channel12_Pin   12             // Define the Relay Control pin
+#define Channel13_Pin   5             // Define the Relay Control pin
 
 #define LEDPIN          5              // Define the LED Control pin
 #define ChannelReverse  true          // Set to true for Relay that requires a signal HIGH for ON, usually relays need a LOW to actuate
@@ -71,22 +74,21 @@ struct settings {
   bool overridenValue = false;
 };
 
+struct schedule {
+  String Date;                      // yyyy.mm.dd format
+  String SunriseTime;               // HH:MM format
+  String SunsetTime;                // HH:MM format
+};
+
 String       DataFile = "params.txt";  // Storage file name on flash
 String       Time_str, DoW_str;        // For Date and Time
 settings     Timer[Channels][7];       // Timer settings, n-Channels each 7-days of the week
+schedule     Channel13Schedule;        // Schedule for 13th channel
 
 //################ VARIABLES ################
 const char* Timezone   = "UTC";
-// Example time zones
-//const char* Timezone = "MET-1METDST,M3.5.0/01,M10.5.0/02"; // Most of Europe
-//const char* Timezone = "CET-1CEST,M3.5.0,M10.5.0/3";       // Central Europe
-//const char* Timezone = "EST-2METDST,M3.5.0/01,M10.5.0/02"; // Most of Europe
-//const char* Timezone = "EST5EDT,M3.2.0,M11.1.0";           // EST USA
-//const char* Timezone = "CST6CDT,M3.2.0,M11.1.0";           // CST USA
-//const char* Timezone = "MST7MDT,M4.1.0,M10.5.0";           // MST USA
-//const char* Timezone = "NZST-12NZDT,M9.5.0,M4.1.0/3";      // Auckland
-//const char* Timezone = "EET-2EEST,M3.5.5/0,M10.5.5/0";     // Asia
-//const char* Timezone = "ACST-9:30ACDT,M10.1.0,M4.1.0/3":   // Australia
+
+Dusk2Dawn location(locationLatitude, locationLongitude, locationTimeZone);
 
 // System values
 String sitetitle            = "Контролер поливу";
@@ -112,6 +114,7 @@ String Channel9_State       = "OFF";      // Status of the channel
 String Channel10_State      = "OFF";      // Status of the channel
 String Channel11_State      = "OFF";      // Status of the channel
 String Channel12_State      = "OFF";      // Status of the channel
+String Channel13_State      = "OFF";      // Status of the channel
 bool   Channel1_Override    = false;
 bool   Channel2_Override    = false;
 bool   Channel3_Override    = false;
@@ -124,6 +127,7 @@ bool   Channel9_Override    = false;
 bool   Channel10_Override   = false;
 bool   Channel11_Override   = false;
 bool   Channel12_Override   = false;
+bool   Channel13_Override   = false;
 
 AsyncWebServer server(80); // Server on IP address port 80 (web-browser default, change to your requirements, e.g. 8080
 
@@ -414,6 +418,7 @@ void loop() {
   if (millis() - LastTimerSwitchCheck > TimerCheckDuration) {
     LastTimerSwitchCheck = millis();                      // Reset time for next event
     UpdateLocalTime();                                    // Updates Time UnixTime to 'now'
+    UpdateChannel13Schedule();
     CheckTimerEvent();                                    // Check for schedule actuated
     Serial.println("Checking timer");
   }
@@ -541,7 +546,7 @@ void Help() {
 //#########################################################################################
 void CheckTimerEvent() {
   String TimeNow;
-  TimeNow        = ConvertUnixTime(UnixTime);           // Get the current time e.g. 15:35
+  TimeNow        = ConvertUnixTime(UnixTime, "%H:%M");           // Get the current time e.g. 15:35
   Channel1_State = "OFF";                               // Switch Channel OFF until the schedule decides otherwise
   Channel2_State = "OFF";                               // Switch Channel OFF until the schedule decides otherwise
   Channel3_State = "OFF";                               // Switch Channel OFF until the schedule decides otherwise
@@ -554,6 +559,7 @@ void CheckTimerEvent() {
   Channel10_State = "OFF";                              // Switch Channel OFF until the schedule decides otherwise
   Channel11_State = "OFF";                              // Switch Channel OFF until the schedule decides otherwise
   Channel12_State = "OFF";                              // Switch Channel OFF until the schedule decides otherwise
+  Channel13_State = "OFF";                              // Switch Channel OFF until the schedule decides otherwise
   if (Channel1_Override) {                              // If manual override is requested then turn the Channel on
     Channel1_State = "ON";
     ActuateChannel(ON, Channel1, Channel1_Pin);         // Switch Channel ON if requested
@@ -602,6 +608,10 @@ void CheckTimerEvent() {
     Channel12_State = "ON";
     ActuateChannel(ON, Channel12, Channel12_Pin);       // Switch Channel ON if requested
   }
+  if (Channel13_Override) {
+    Channel13_State = "ON";
+    ActuateChannel(ON, Channel13, Channel13_Pin);       // Switch Channel ON if requested
+  }
   for (byte channel = 0; channel < Channels; channel++) {
     for (byte dow = 0; dow < 7; dow++) {                // Look for any valid timer events, if found turn the heating on
       for (byte p = 0; p < NumOfEvents; p++) {
@@ -624,6 +634,11 @@ void CheckTimerEvent() {
       }
     }
   }
+
+  if (TimeNow >= Channel13Schedule.SunriseTime && TimeNow < Channel13Schedule.SunsetTime) {
+    Channel13_State = "ON";
+  }
+
   if (Channel1_State == "ON") ActuateChannel(ON, Channel1, Channel1_Pin); else ActuateChannel(OFF, Channel1, Channel1_Pin);
   if (Channel2_State == "ON") ActuateChannel(ON, Channel2, Channel2_Pin); else ActuateChannel(OFF, Channel2, Channel2_Pin);
   if (Channel3_State == "ON") ActuateChannel(ON, Channel3, Channel3_Pin); else ActuateChannel(OFF, Channel3, Channel3_Pin);
@@ -636,6 +651,7 @@ void CheckTimerEvent() {
   if (Channel10_State == "ON") ActuateChannel(ON, Channel10, Channel10_Pin); else ActuateChannel(OFF, Channel10, Channel10_Pin);
   if (Channel11_State == "ON") ActuateChannel(ON, Channel11, Channel11_Pin); else ActuateChannel(OFF, Channel11, Channel11_Pin);
   if (Channel12_State == "ON") ActuateChannel(ON, Channel12, Channel12_Pin); else ActuateChannel(OFF, Channel12, Channel12_Pin);
+  if (Channel13_State == "ON") ActuateChannel(ON, Channel13, Channel13_Pin); else ActuateChannel(OFF, Channel13, Channel13_Pin);
 }
 //#########################################################################################
 void ActuateChannel(bool demand, byte channel, byte channel_pin) {
@@ -696,7 +712,9 @@ void append_HTML_header(bool refreshMode) {
   webpage += ".c3on {background-color:orange;}";
   webpage += ".c4on {background-color:orange;}";
   webpage += ".wifi {padding:3px;position:relative;top:1em;left:0.36em;}";
-  webpage += ".wifi-info {float: right; margin-right: 20px;margin-top: 5px;}";
+  webpage += ".right-panel {float:right;margin-right:20px;margin-top:5px;}";
+  webpage += ".wifi-info {float:right;}";
+  webpage += ".sunrise-sunset {float:left;margin-right:20px;margin-top:5px;}";
   webpage += ".wifi, .wifi:before {display:inline-block;border:9px double transparent;border-top-color:currentColor;border-radius:50%;}";
   webpage += ".wifi:before {content:'';width:0;height:0;}";
   webpage += ".channel-name {display:block;text-decoration:none;color:blue;}";
@@ -705,7 +723,13 @@ void append_HTML_header(bool refreshMode) {
   webpage += "<div class='topnav'>";
   webpage += "<a href='/'>Статус</a>";
   webpage += "<a href='help'>Довідка</a>";
+  webpage += "<div class='right-panel'>";
+  webpage += "<div class='sunrise-sunset'>";
+  webpage += "<svg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' width='36' height='36' viewBox='0, 0, 400, 400'><g id='svgg'><path id='path0' d='M193.750 87.500 C 193.750 111.111,196.042 118.750,203.125 118.750 C 210.208 118.750,212.500 111.111,212.500 87.500 C 212.500 63.889,210.208 56.250,203.125 56.250 C 196.042 56.250,193.750 63.889,193.750 87.500 M100.000 90.119 C 100.000 103.943,120.991 137.416,129.688 137.460 C 140.917 137.517,139.292 124.891,125.069 101.563 C 112.168 80.404,100.000 74.849,100.000 90.119 M276.563 105.974 C 259.920 135.120,259.573 137.500,271.967 137.500 C 281.729 137.500,306.185 102.922,306.227 89.063 C 306.275 72.993,290.144 82.189,276.563 105.974 M178.125 149.802 C 138.487 158.845,102.526 192.059,95.763 225.873 C 92.217 243.603,91.809 243.750,46.094 243.750 C 9.288 243.750,0.000 245.639,0.000 253.125 C 0.000 261.263,26.389 262.500,200.000 262.500 C 373.611 262.500,400.000 261.263,400.000 253.125 C 400.000 245.639,390.712 243.750,353.906 243.750 C 308.191 243.750,307.783 243.603,304.237 225.873 C 294.364 176.506,230.343 137.889,178.125 149.802 M31.250 162.592 C 31.250 169.959,68.172 193.692,79.688 193.727 C 94.260 193.770,87.513 178.177,68.204 167.188 C 46.707 154.952,31.250 153.030,31.250 162.592 M332.813 169.469 C 310.766 183.588,306.534 193.750,322.700 193.750 C 335.453 193.750,375.000 169.734,375.000 161.990 C 375.000 152.161,354.036 155.877,332.813 169.469 M245.254 179.132 C 263.289 188.217,277.143 206.226,284.145 229.688 L 288.342 243.750 200.000 243.750 L 111.658 243.750 116.024 229.688 C 119.675 217.928,142.000 181.465,145.738 181.156 C 146.363 181.104,158.125 177.076,171.875 172.204 C 198.029 162.937,216.580 164.689,245.254 179.132 M62.500 296.875 C 62.500 304.924,81.944 306.250,200.000 306.250 C 318.056 306.250,337.500 304.924,337.500 296.875 C 337.500 288.826,318.056 287.500,200.000 287.500 C 81.944 287.500,62.500 288.826,62.500 296.875 M112.500 334.375 C 112.500 342.262,126.389 343.750,200.000 343.750 C 273.611 343.750,287.500 342.262,287.500 334.375 C 287.500 326.488,273.611 325.000,200.000 325.000 C 126.389 325.000,112.500 326.488,112.500 334.375 ' stroke='none' fill='blue' fill-rule='evenodd'></path></g></svg>";
+  webpage += "<div style='float: right; margin-top: 14px; margin-left: 12px;'>" + Channel13Schedule.SunriseTime + " | " + Channel13Schedule.SunsetTime + "</div>";
+  webpage += "</div>";
   webpage += "<div class='wifi-info'><div class='wifi'></div><span>" + WiFiSignal() + "</span></div>";
+  webpage += "</div>";
   webpage += "</div><br>";
 }
 //#########################################################################################
@@ -789,12 +813,33 @@ boolean UpdateLocalTime() {
   return true;
 }
 //#########################################################################################
-String ConvertUnixTime(int unix_time) {
+String ConvertUnixTime(int unix_time, const char* format) {
   time_t tm = unix_time;
   struct tm *now_tm = localtime(&tm);
   char output[40];
-  strftime(output, sizeof(output), "%H:%M", now_tm);               // Returns 21:12
+  strftime(output, sizeof(output), format, now_tm);               // Returns 21:12
   return output;
+}
+//#########################################################################################
+void UpdateChannel13Schedule() {
+  time_t tm = UnixTime;
+  struct tm *now_tm = localtime(&tm);
+  String DateNow;
+  DateNow = ConvertUnixTime(UnixTime, "%Y.%m.%d");           // Get the current time e.g. 2023.04.23
+  if (Channel13Schedule.Date >= DateNow)
+  {
+    return;
+  }
+
+  int sunriseMins = location.sunrise(now_tm->tm_year, now_tm->tm_mon, now_tm->tm_mday, now_tm->tm_isdst);
+  int sunsetMins = location.sunset(now_tm->tm_year, now_tm->tm_mon, now_tm->tm_mday, now_tm->tm_isdst);
+  char sunrise[] = "00:00";
+  char sunset[] = "00:00";
+  location.min2str(sunrise, sunriseMins);
+  location.min2str(sunset, sunsetMins);
+  Channel13Schedule.Date = DateNow;
+  Channel13Schedule.SunriseTime = String(sunrise);
+  Channel13Schedule.SunsetTime = String(sunset);
 }
 //#########################################################################################
 void StartSPIFFS() {
