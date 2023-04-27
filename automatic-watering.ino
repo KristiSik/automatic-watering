@@ -831,8 +831,8 @@ void UpdateChannel13Schedule() {
     return;
   }
 
-  int sunriseMins = location.sunrise(now_tm->tm_year, now_tm->tm_mon, now_tm->tm_mday, now_tm->tm_isdst);
-  int sunsetMins = location.sunset(now_tm->tm_year, now_tm->tm_mon, now_tm->tm_mday, now_tm->tm_isdst);
+  int sunriseMins = location.sunrise(1900 + now_tm->tm_year, now_tm->tm_mon + 1, now_tm->tm_mday, now_tm->tm_isdst);
+  int sunsetMins = location.sunset(1900 + now_tm->tm_year, now_tm->tm_mon + 1, now_tm->tm_mday, now_tm->tm_isdst);
   char sunrise[] = "00:00";
   char sunset[] = "00:00";
   location.min2str(sunrise, sunriseMins);
