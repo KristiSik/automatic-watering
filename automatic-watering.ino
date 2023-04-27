@@ -67,67 +67,79 @@ const char* ServerName = "Controller"; // Connect to the server with http://cont
 #define LEDPIN          5              // Define the LED Control pin
 #define ChannelReverse  true          // Set to true for Relay that requires a signal HIGH for ON, usually relays need a LOW to actuate
 
-struct settings {
+struct Settings {
   String DoW;                          // Day of Week for the programmed event
   String Start[NumOfEvents];           // Start time
   String Stop[NumOfEvents];            // End time
   bool overridenValue = false;
 };
 
-struct schedule {
+struct Schedule {
   String Date;                      // yyyy.mm.dd format
   String SunriseTime;               // HH:MM format
   String SunsetTime;                // HH:MM format
 };
 
+struct ChannelOverride {
+  bool Overriden = false;
+  String State = "";
+  void setState(String newState) {
+    State = newState;
+    Overriden = !Overriden;
+  }
+};
+
 String       DataFile = "params.txt";  // Storage file name on flash
 String       Time_str, DoW_str;        // For Date and Time
-settings     Timer[Channels][7];       // Timer settings, n-Channels each 7-days of the week
-schedule     Channel13Schedule;        // Schedule for 13th channel
+Settings     Timer[Channels][7];       // Timer settings, n-Channels each 7-days of the week
+Schedule     Channel13Schedule;        // Schedule for 13th channel
 
 //################ VARIABLES ################
 const char* Timezone   = "UTC";
 
 Dusk2Dawn location(locationLatitude, locationLongitude, locationTimeZone);
 
-// System values
-String sitetitle            = "Контролер поливу";
-String Year                 = "березень 2023";     // For the footer line
+// System values    
+String sitetitle                = "Контролер поливу";
+String Year                     = "березень 2023";     // For the footer line
 
-bool   ManualOverride       = true;      // Manual override
-String Units                = "M";        // or Units = "I" for °F and 12:12pm time format
+bool   ManualOverride           = true;      // Manual override
+String Units                    = "M";        // or Units = "I" for °F and 12:12pm time format
 
-String webpage              = "";         // General purpose variables to hold HTML code for display
-int    TimerCheckDuration   = 1000;       // Check for timer event every 1-second
-int    wifi_signal          = 0;          // WiFi signal strength
-long   LastTimerSwitchCheck = 0;          // Counter for last timer check
-int    UnixTime             = 0;          // Time now (when updated) of the current time
-String Channel1_State       = "OFF";      // Status of the channel
-String Channel2_State       = "OFF";      // Status of the channel
-String Channel3_State       = "OFF";      // Status of the channel
-String Channel4_State       = "OFF";      // Status of the channel
-String Channel5_State       = "OFF";      // Status of the channel
-String Channel6_State       = "OFF";      // Status of the channel
-String Channel7_State       = "OFF";      // Status of the channel
-String Channel8_State       = "OFF";      // Status of the channel
-String Channel9_State       = "OFF";      // Status of the channel
-String Channel10_State      = "OFF";      // Status of the channel
-String Channel11_State      = "OFF";      // Status of the channel
-String Channel12_State      = "OFF";      // Status of the channel
-String Channel13_State      = "OFF";      // Status of the channel
-bool   Channel1_Override    = false;
-bool   Channel2_Override    = false;
-bool   Channel3_Override    = false;
-bool   Channel4_Override    = false;
-bool   Channel5_Override    = false;
-bool   Channel6_Override    = false;
-bool   Channel7_Override    = false;
-bool   Channel8_Override    = false;
-bool   Channel9_Override    = false;
-bool   Channel10_Override   = false;
-bool   Channel11_Override   = false;
-bool   Channel12_Override   = false;
-bool   Channel13_Override   = false;
+String webpage                  = "";         // General purpose variables to hold HTML code for display
+int    TimerCheckDuration       = 1000;       // Check for timer event every 1-second
+int    wifi_signal              = 0;          // WiFi signal strength
+long   LastTimerSwitchCheck     = 0;          // Counter for last timer check
+int    UnixTime                 = 0;          // Time now (when updated) of the current time
+String Channel1_State           = "OFF";      // Status of the channel
+String Channel2_State           = "OFF";      // Status of the channel
+String Channel3_State           = "OFF";      // Status of the channel
+String Channel4_State           = "OFF";      // Status of the channel
+String Channel5_State           = "OFF";      // Status of the channel
+String Channel6_State           = "OFF";      // Status of the channel
+String Channel7_State           = "OFF";      // Status of the channel
+String Channel8_State           = "OFF";      // Status of the channel
+String Channel9_State           = "OFF";      // Status of the channel
+String Channel10_State          = "OFF";      // Status of the channel
+String Channel11_State          = "OFF";      // Status of the channel
+String Channel12_State          = "OFF";      // Status of the channel
+String Channel13_State          = "OFF";      // Status of the channel
+
+ChannelOverride Channel1Override;             // Override state of the channel
+ChannelOverride Channel2Override;             // Override state of the channel
+ChannelOverride Channel3Override;             // Override state of the channel
+ChannelOverride Channel4Override;             // Override state of the channel
+ChannelOverride Channel5Override;             // Override state of the channel
+ChannelOverride Channel6Override;             // Override state of the channel
+ChannelOverride Channel7Override;             // Override state of the channel
+ChannelOverride Channel8Override;             // Override state of the channel
+ChannelOverride Channel9Override;             // Override state of the channel
+ChannelOverride Channel10Override;            // Override state of the channel
+ChannelOverride Channel11Override;            // Override state of the channel
+ChannelOverride Channel12Override;            // Override state of the channel
+
+int CurrentManualOverridings  = 0;        // Determines how many manual overridings are in progress at the moment
+bool CheckingTimerEvent       = false;    // Indicates wether the checking timer event is in progress
 
 AsyncWebServer server(80); // Server on IP address port 80 (web-browser default, change to your requirements, e.g. 8080
 
@@ -358,54 +370,61 @@ void setup() {
       return;
     }
 
+    while (CheckingTimerEvent) {
+      delay(10);
+    }
+    ++CurrentManualOverridings;
+    
     if (request->hasArg("manualoverride1")) {
       String stringArg = request->arg("manualoverride1");
-      if (stringArg == "ON") Channel1_Override = true; else Channel1_Override = false;
+      Channel1Override.setState(stringArg);
     }
     if (request->hasArg("manualoverride2")) {
       String stringArg = request->arg("manualoverride2");
-      if (stringArg == "ON") Channel2_Override = true; else Channel2_Override = false;
+      Channel2Override.setState(stringArg);
     }
     if (request->hasArg("manualoverride3")) {
       String stringArg = request->arg("manualoverride3");
-      if (stringArg == "ON") Channel3_Override = true; else Channel3_Override = false;
+      Channel3Override.setState(stringArg);
     }
     if (request->hasArg("manualoverride4")) {
       String stringArg = request->arg("manualoverride4");
-      if (stringArg == "ON") Channel4_Override = true; else Channel4_Override = false;
+      Channel4Override.setState(stringArg);
     }
     if (request->hasArg("manualoverride5")) {
       String stringArg = request->arg("manualoverride5");
-      if (stringArg == "ON") Channel5_Override = true; else Channel5_Override = false;
+      Channel5Override.setState(stringArg);
     }
     if (request->hasArg("manualoverride6")) {
       String stringArg = request->arg("manualoverride6");
-      if (stringArg == "ON") Channel6_Override = true; else Channel6_Override = false;
+      Channel6Override.setState(stringArg);
     }
     if (request->hasArg("manualoverride7")) {
       String stringArg = request->arg("manualoverride7");
-      if (stringArg == "ON") Channel7_Override = true; else Channel7_Override = false;
+      Channel7Override.setState(stringArg);
     }
     if (request->hasArg("manualoverride8")) {
       String stringArg = request->arg("manualoverride8");
-      if (stringArg == "ON") Channel8_Override = true; else Channel8_Override = false;
+      Channel8Override.setState(stringArg);
     }
     if (request->hasArg("manualoverride9")) {
       String stringArg = request->arg("manualoverride9");
-      if (stringArg == "ON") Channel9_Override = true; else Channel9_Override = false;
+      Channel9Override.setState(stringArg);
     }
     if (request->hasArg("manualoverride10")) {
       String stringArg = request->arg("manualoverride10");
-      if (stringArg == "ON") Channel10_Override = true; else Channel10_Override = false;
+      Channel10Override.setState(stringArg);
     }
     if (request->hasArg("manualoverride11")) {
       String stringArg = request->arg("manualoverride11");
-      if (stringArg == "ON") Channel11_Override = true; else Channel11_Override = false;
+      Channel11Override.setState(stringArg);
     }
     if (request->hasArg("manualoverride12")) {
       String stringArg = request->arg("manualoverride12");
-      if (stringArg == "ON") Channel12_Override = true; else Channel12_Override = false;
+      Channel12Override.setState(stringArg);
     }
+    
+    --CurrentManualOverridings;
     SaveSettings();
     delay(1000);                                          // Wait for channel to be updated in main thread, so the home page will display correct channel state
     request->redirect("/homepage");                       // Go back to home page
@@ -545,6 +564,13 @@ void Help() {
 }
 //#########################################################################################
 void CheckTimerEvent() {
+  CheckingTimerEvent = true;
+
+  // Wait until all current manual overridings are finished
+  while (CurrentManualOverridings > 0) {
+    delay(10);
+  }
+
   String TimeNow;
   TimeNow        = ConvertUnixTime(UnixTime, "%H:%M");           // Get the current time e.g. 15:35
   Channel1_State = "OFF";                               // Switch Channel OFF until the schedule decides otherwise
@@ -560,58 +586,7 @@ void CheckTimerEvent() {
   Channel11_State = "OFF";                              // Switch Channel OFF until the schedule decides otherwise
   Channel12_State = "OFF";                              // Switch Channel OFF until the schedule decides otherwise
   Channel13_State = "OFF";                              // Switch Channel OFF until the schedule decides otherwise
-  if (Channel1_Override) {                              // If manual override is requested then turn the Channel on
-    Channel1_State = "ON";
-    ActuateChannel(ON, Channel1, Channel1_Pin);         // Switch Channel ON if requested
-  }
-  if (Channel2_Override) {
-    Channel2_State = "ON";
-    ActuateChannel(ON, Channel2, Channel2_Pin);         // Switch Channel ON if requested
-  }
-  if (Channel3_Override) {
-    Channel3_State = "ON";
-    ActuateChannel(ON, Channel3, Channel3_Pin);         // Switch Channel ON if requested
-  }
-  if (Channel4_Override) {
-    Channel4_State = "ON";
-    ActuateChannel(ON, Channel4, Channel4_Pin);         // Switch Channel ON if requested
-  }
-  if (Channel5_Override) {
-    Channel5_State = "ON";
-    ActuateChannel(ON, Channel5, Channel5_Pin);         // Switch Channel ON if requested
-  }
-  if (Channel6_Override) {
-    Channel6_State = "ON";
-    ActuateChannel(ON, Channel6, Channel6_Pin);         // Switch Channel ON if requested
-  }
-  if (Channel7_Override) {
-    Channel7_State = "ON";
-    ActuateChannel(ON, Channel7, Channel7_Pin);         // Switch Channel ON if requested
-  }
-  if (Channel8_Override) {
-    Channel8_State = "ON";
-    ActuateChannel(ON, Channel8, Channel8_Pin);         // Switch Channel ON if requested
-  }
-  if (Channel9_Override) {
-    Channel9_State = "ON";
-    ActuateChannel(ON, Channel9, Channel9_Pin);         // Switch Channel ON if requested
-  }
-  if (Channel10_Override) {
-    Channel10_State = "ON";
-    ActuateChannel(ON, Channel10, Channel10_Pin);       // Switch Channel ON if requested
-  }
-  if (Channel11_Override) {
-    Channel11_State = "ON";
-    ActuateChannel(ON, Channel11, Channel11_Pin);       // Switch Channel ON if requested
-  }
-  if (Channel12_Override) {
-    Channel12_State = "ON";
-    ActuateChannel(ON, Channel12, Channel12_Pin);       // Switch Channel ON if requested
-  }
-  if (Channel13_Override) {
-    Channel13_State = "ON";
-    ActuateChannel(ON, Channel13, Channel13_Pin);       // Switch Channel ON if requested
-  }
+
   for (byte channel = 0; channel < Channels; channel++) {
     for (byte dow = 0; dow < 7; dow++) {                // Look for any valid timer events, if found turn the heating on
       for (byte p = 0; p < NumOfEvents; p++) {
@@ -635,6 +610,79 @@ void CheckTimerEvent() {
     }
   }
 
+  if (Channel1Override.Overriden) {                              // If manual override is requested then turn the Channel on
+    if (Channel1_State == Channel1Override.State) {
+      Channel1Override.Overriden = false;
+    }
+    Channel1_State = Channel1Override.State;
+  }
+  if (Channel2Override.Overriden) {
+    if (Channel2_State == Channel2Override.State) {
+      Channel2Override.Overriden = false;
+    }
+    Channel2_State = Channel2Override.State;
+  }
+  if (Channel3Override.Overriden) {
+    if (Channel3_State == Channel3Override.State) {
+      Channel3Override.Overriden = false;
+    }
+    Channel3_State = Channel3Override.State;
+  }
+  if (Channel4Override.Overriden) {
+    if (Channel4_State == Channel4Override.State) {
+      Channel4Override.Overriden = false;
+    }
+    Channel4_State = Channel4Override.State;
+  }
+  if (Channel5Override.Overriden) {
+    if (Channel5_State == Channel5Override.State) {
+      Channel5Override.Overriden = false;
+    }
+    Channel5_State = Channel5Override.State;
+  }
+  if (Channel6Override.Overriden) {
+    if (Channel6_State == Channel6Override.State) {
+      Channel6Override.Overriden = false;
+    }
+    Channel6_State = Channel6Override.State;
+  }
+  if (Channel7Override.Overriden) {
+    if (Channel7_State == Channel7Override.State) {
+      Channel7Override.Overriden = false;
+    }
+    Channel7_State = Channel7Override.State;
+  }
+  if (Channel8Override.Overriden) {
+    if (Channel8_State == Channel8Override.State) {
+      Channel8Override.Overriden = false;
+    }
+    Channel8_State = Channel8Override.State;
+  }
+  if (Channel9Override.Overriden) {
+    if (Channel9_State == Channel9Override.State) {
+      Channel9Override.Overriden = false;
+    }
+    Channel9_State = Channel9Override.State;
+  }
+  if (Channel10Override.Overriden) {
+    if (Channel10_State == Channel10Override.State) {
+      Channel10Override.Overriden = false;
+    }
+    Channel10_State = Channel10Override.State;
+  }
+  if (Channel11Override.Overriden) {
+    if (Channel11_State == Channel11Override.State) {
+      Channel11Override.Overriden = false;
+    }
+    Channel11_State = Channel11Override.State;
+  }
+  if (Channel12Override.Overriden) {
+    if (Channel12_State == Channel12Override.State) {
+      Channel12Override.Overriden = false;
+    }
+    Channel12_State = Channel12Override.State;
+  }
+
   if (TimeNow >= Channel13Schedule.SunriseTime && TimeNow < Channel13Schedule.SunsetTime) {
     Channel13_State = "ON";
   }
@@ -652,6 +700,7 @@ void CheckTimerEvent() {
   if (Channel11_State == "ON") ActuateChannel(ON, Channel11, Channel11_Pin); else ActuateChannel(OFF, Channel11, Channel11_Pin);
   if (Channel12_State == "ON") ActuateChannel(ON, Channel12, Channel12_Pin); else ActuateChannel(OFF, Channel12, Channel12_Pin);
   if (Channel13_State == "ON") ActuateChannel(ON, Channel13, Channel13_Pin); else ActuateChannel(OFF, Channel13, Channel13_Pin);
+  CheckingTimerEvent = false;
 }
 //#########################################################################################
 void ActuateChannel(bool demand, byte channel, byte channel_pin) {
