@@ -821,6 +821,21 @@ void SetupSystem() {
   while (!Serial);
   Serial.println(__FILE__);
   Serial.println("Starting...");
+  if (!ChannelReverse) {
+    digitalWrite(Channel1_Pin, HIGH);
+    digitalWrite(Channel2_Pin, HIGH);
+    digitalWrite(Channel3_Pin, HIGH);
+    digitalWrite(Channel4_Pin, HIGH);
+    digitalWrite(Channel5_Pin, HIGH);
+    digitalWrite(Channel6_Pin, HIGH);
+    digitalWrite(Channel7_Pin, HIGH);
+    digitalWrite(Channel8_Pin, HIGH);
+    digitalWrite(Channel9_Pin, HIGH);
+    digitalWrite(Channel10_Pin, HIGH);
+    digitalWrite(Channel11_Pin, HIGH);
+    digitalWrite(Channel12_Pin, HIGH);
+    digitalWrite(Channel13_Pin, HIGH);
+  }
   pinMode(Channel1_Pin, OUTPUT);
   pinMode(Channel2_Pin, OUTPUT);
   pinMode(Channel3_Pin, OUTPUT);
@@ -833,6 +848,7 @@ void SetupSystem() {
   pinMode(Channel10_Pin, OUTPUT);
   pinMode(Channel11_Pin, OUTPUT);
   pinMode(Channel12_Pin, OUTPUT);
+  pinMode(Channel13_Pin, OUTPUT);
   pinMode(LEDPIN, OUTPUT);
 }
 //#########################################################################################
