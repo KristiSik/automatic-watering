@@ -50,22 +50,22 @@ const char* ServerName = "Controller"; // Connect to the server with http://cont
 #define Channel12       11             // Define Channel-12
 #define Channel13       12             // Define Channel-13
 // Now define the GPIO pins to be used for relay control
-#define Channel1_Pin    0              // Define the Relay Control pin
-#define Channel2_Pin    2              // Define the Relay Control pin
-#define Channel3_Pin    4              // Define the Relay Control pin
-#define Channel4_Pin    18              // Define the Relay Control pin
-#define Channel5_Pin    18             // Define the Relay Control pin
-#define Channel6_Pin    19             // Define the Relay Control pin
-#define Channel7_Pin    21             // Define the Relay Control pin
-#define Channel8_Pin    22             // Define the Relay Control pin
-#define Channel9_Pin    23             // Define the Relay Control pin
-#define Channel10_Pin   15             // Define the Relay Control pin
-#define Channel11_Pin   13             // Define the Relay Control pin
-#define Channel12_Pin   12             // Define the Relay Control pin
-#define Channel13_Pin   5             // Define the Relay Control pin
+#define Channel1_Pin    23              // Define the Relay Control pin
+#define Channel2_Pin    19              // Define the Relay Control pin
+#define Channel3_Pin    18              // Define the Relay Control pin
+#define Channel4_Pin    17              // Define the Relay Control pin
+#define Channel5_Pin    16             // Define the Relay Control pin
+#define Channel6_Pin    4             // Define the Relay Control pin
+#define Channel7_Pin    2             // Define the Relay Control pin
+#define Channel8_Pin    13             // Define the Relay Control pin
+#define Channel9_Pin    27             // Define the Relay Control pin
+#define Channel10_Pin   26             // Define the Relay Control pin
+#define Channel11_Pin   25             // Define the Relay Control pin
+#define Channel12_Pin   33             // Define the Relay Control pin
+#define Channel13_Pin   32             // Define the Relay Control pin
 
 #define LEDPIN          5              // Define the LED Control pin
-#define ChannelReverse  true          // Set to true for Relay that requires a signal HIGH for ON, usually relays need a LOW to actuate
+#define ChannelReverse  false          // Set to true for Relay that requires a signal HIGH for ON, usually relays need a LOW to actuate
 
 struct Settings {
   String DoW;                          // Day of Week for the programmed event
