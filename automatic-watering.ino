@@ -30,7 +30,7 @@ String version = "1.0";      // Programme version, see change log at end
 
 const char* ServerName = "Controller"; // Connect to the server with http://controller.local/ e.g. if name = "myserver" use http://myserver.local/
 
-#define Channels        12             // n-Channels
+#define Channels        13             // n-Channels
 #define NumOfEvents     4              // Number of events per-day, 4 is a practical limit
 #define noRefresh       false          // Set auto refresh OFF
 #define Refresh         true           // Set auto refresh ON
@@ -68,10 +68,10 @@ const char* ServerName = "Controller"; // Connect to the server with http://cont
 #define ChannelReverse  false          // Set to true for Relay that requires a signal HIGH for ON, usually relays need a LOW to actuate
 
 struct Settings {
+  bool IsSunriseSunsetMode;              // Indicates wether the sunrise&sunset time should be used instead start&stop
   String DoW;                          // Day of Week for the programmed event
   String Start[NumOfEvents];           // Start time
   String Stop[NumOfEvents];            // End time
-  bool overridenValue = false;
 };
 
 struct Schedule {
@@ -92,7 +92,7 @@ struct ChannelOverride {
 String       DataFile = "params.txt";  // Storage file name on flash
 String       Time_str, DoW_str;        // For Date and Time
 Settings     Timer[Channels][7];       // Timer settings, n-Channels each 7-days of the week
-Schedule     Channel13Schedule;        // Schedule for 13th channel
+Schedule     SunriseSunsetSchedule;    // Sunrise and sunset time for today
 
 //################ VARIABLES ################
 const char* Timezone   = "UTC";
@@ -154,7 +154,11 @@ void setup() {
   SetupTime();                            // Start NTP clock services
   StartSPIFFS();                          // Start SPIFFS filing system
   Initialise_Array();                     // Initialise the array for storage and set some values
-  RecoverSettings();                      // Recover settings from LittleFS
+  bool recoveredSettings = RecoverSettings();                      // Recover settings from LittleFS
+  if (!recoveredSettings) {
+    InitializeSunriseSunsetChannels();
+  }
+
   SetupDeviceName(ServerName);            // Set logical device name
 
   // Set handler for '/'
@@ -168,62 +172,67 @@ void setup() {
   });
   // Set handler for '/timer1'
   server.on("/timer1", HTTP_GET, [](AsyncWebServerRequest * request) {
-    TimerSet(Channel1);
+    TimerSet(Channel1, false);
     request->send(200, "text/html", webpage);
   });
   // Set handler for '/timer2'
   server.on("/timer2", HTTP_GET, [](AsyncWebServerRequest * request) {
-    TimerSet(Channel2);
+    TimerSet(Channel2, false);
     request->send(200, "text/html", webpage);
   });
   // Set handler for '/timer3'
   server.on("/timer3", HTTP_GET, [](AsyncWebServerRequest * request) {
-    TimerSet(Channel3);
+    TimerSet(Channel3, false);
     request->send(200, "text/html", webpage);
   });
   // Set handler for '/timer4'
   server.on("/timer4", HTTP_GET, [](AsyncWebServerRequest * request) {
-    TimerSet(Channel4);
+    TimerSet(Channel4, false);
     request->send(200, "text/html", webpage);
   });
   // Set handler for '/timer5'
   server.on("/timer5", HTTP_GET, [](AsyncWebServerRequest * request) {
-    TimerSet(Channel5);
+    TimerSet(Channel5, false);
     request->send(200, "text/html", webpage);
   });
   // Set handler for '/timer6'
   server.on("/timer6", HTTP_GET, [](AsyncWebServerRequest * request) {
-    TimerSet(Channel6);
+    TimerSet(Channel6, false);
     request->send(200, "text/html", webpage);
   });
   // Set handler for '/timer7'
   server.on("/timer7", HTTP_GET, [](AsyncWebServerRequest * request) {
-    TimerSet(Channel7);
+    TimerSet(Channel7, false);
     request->send(200, "text/html", webpage);
   });
   // Set handler for '/timer8'
   server.on("/timer8", HTTP_GET, [](AsyncWebServerRequest * request) {
-    TimerSet(Channel8);
+    TimerSet(Channel8, false);
     request->send(200, "text/html", webpage);
   });
   // Set handler for '/timer9'
   server.on("/timer9", HTTP_GET, [](AsyncWebServerRequest * request) {
-    TimerSet(Channel9);
+    TimerSet(Channel9, false);
     request->send(200, "text/html", webpage);
   });
   // Set handler for '/timer10'
   server.on("/timer10", HTTP_GET, [](AsyncWebServerRequest * request) {
-    TimerSet(Channel10);
+    TimerSet(Channel10, false);
     request->send(200, "text/html", webpage);
   });
   // Set handler for '/timer11'
   server.on("/timer11", HTTP_GET, [](AsyncWebServerRequest * request) {
-    TimerSet(Channel11);
+    TimerSet(Channel11, false);
     request->send(200, "text/html", webpage);
   });
   // Set handler for '/timer12'
   server.on("/timer12", HTTP_GET, [](AsyncWebServerRequest * request) {
-    TimerSet(Channel12);
+    TimerSet(Channel12, false);
+    request->send(200, "text/html", webpage);
+  });
+  // Set handler for '/timer13'
+  server.on("/timer13", HTTP_GET, [](AsyncWebServerRequest * request) {
+    TimerSet(Channel13, true);
     request->send(200, "text/html", webpage);
   });
   // Set handler for '/help'
@@ -363,6 +372,23 @@ void setup() {
     SaveSettings();
     request->redirect("/homepage");                       // Go back to home page
   });
+  // Set handler for '/handletimer12' inputs
+  server.on("/handletimer12", HTTP_GET, [](AsyncWebServerRequest * request) {
+    bool useSunriseSunsetMode = request->arg("UseSunriseSunset").equalsIgnoreCase("on");
+    Serial.println(request->arg("StartTime"));
+    Serial.println(request->arg("StopTime"));
+    Timer[12][0].IsSunriseSunsetMode = useSunriseSunsetMode;
+    if (!useSunriseSunsetMode) {
+      for (byte dow = 0; dow < 7; dow++) {
+        for (byte p = 0; p < 4; p++) {
+          Timer[12][dow].Start[p] = request->arg("StartTime");
+          Timer[12][dow].Stop[p]  = request->arg("StopTime");
+        }
+      }
+    }
+    SaveSettings();
+    request->redirect("/homepage");                       // Go back to home page
+  });
   // Set handler for '/handlesetup' inputs
   server.on("/handlesetup", HTTP_GET, [](AsyncWebServerRequest * request) {
     if (!ManualOverride) {
@@ -437,9 +463,8 @@ void loop() {
   if (millis() - LastTimerSwitchCheck > TimerCheckDuration) {
     LastTimerSwitchCheck = millis();                      // Reset time for next event
     UpdateLocalTime();                                    // Updates Time UnixTime to 'now'
-    UpdateChannel13Schedule();
+    UpdateSunriseSunsetSchedule();
     CheckTimerEvent();                                    // Check for schedule actuated
-    Serial.println("Checking timer");
   }
 }
 //#########################################################################################
@@ -485,23 +510,67 @@ void Homepage() {
   append_HTML_footer();
 }
 //#########################################################################################
-bool CheckTime(byte channel, String DoW_Str, String TimeNow_Str) {
+bool CheckTime(byte channel, String TimeNow_Str) {
+  if (Timer[channel][0].IsSunriseSunsetMode) {
+    return TimeNow_Str >= SunriseSunsetSchedule.SunriseTime && TimeNow_Str < SunriseSunsetSchedule.SunsetTime;
+  }
+
   for (byte dow = 0; dow < 7; dow++) {                 // Look for any valid timer events, if found turn the heating on
     for (byte p = 0; p < NumOfEvents; p++) {
       // Now check for a scheduled ON time, if so Switch the Timer ON and check the temperature against target temperature
-      if (String(dow) == DoW_Str && (TimeNow_Str >= Timer[channel][dow].Start[p] && TimeNow_Str < Timer[channel][dow].Stop[p] && Timer[channel][dow].Start[p] != ""))
+      if (String(dow) == DoW_str && (TimeNow_Str >= Timer[channel][dow].Start[p] && TimeNow_Str < Timer[channel][dow].Stop[p] && Timer[channel][dow].Start[p] != ""))
         return true;
     }
   }
   return false;
 }
 //#########################################################################################
-void TimerSet(int channel) {
+void TimerSet(int channel, bool sunriseSunsetMode) {
   append_HTML_header(noRefresh);
   webpage += "<h2>Налаштування розкладу Канал-" + String(channel + 1) + "</h2><br>";
   webpage += "<h3>Клумба-" + String(channel + 1) + "</h3><br>";
   webpage += "<FORM action='/handletimer" + String(channel) + "'>";
   webpage += "<table class='centre timer'>";
+  if (sunriseSunsetMode) {
+    SunriseSunsetScheduleHtml(channel);
+  } else {
+    WeekScheduleHtml(channel);
+  }
+  webpage += "</table>";
+  webpage += "<div class='centre'>";
+  webpage += "<br><input type='submit' value='Зберегти'><br><br>";
+  webpage += "</div></form>";
+  append_HTML_footer();
+}
+//#########################################################################################
+void SunriseSunsetScheduleHtml(int channel) {
+  String startTime = Timer[channel][0].IsSunriseSunsetMode
+    ? SunriseSunsetSchedule.SunriseTime
+    : Timer[channel][0].Start[0];
+  String stopTime = Timer[channel][0].IsSunriseSunsetMode
+    ? SunriseSunsetSchedule.SunsetTime
+    : Timer[channel][0].Stop[0];
+  String sunriseSunsetCheckedAttribute = Timer[channel][0].IsSunriseSunsetMode
+    ? "checked"
+    : "";
+
+  webpage += "<tbody>";
+  webpage += "<tr><td>";
+  webpage += "<input id='sunrise-sunset' name='UseSunriseSunset' type='checkbox' " + sunriseSunsetCheckedAttribute + " /><label for='sunrise-sunset'>Схід/Захід</label>";
+  webpage += "</td></tr>";
+  webpage += "<tr>";
+  webpage += "<td>Старт</td>";
+  webpage += "<td><input name='StartTime' type='time' value='" + startTime + "'></td>";
+  webpage += "</tr>";
+  webpage += "<tr>";
+  webpage += "<td>Стоп</td>";
+  webpage += "<td><input name='StopTime' type='time' value='" + stopTime + "'></td>";
+  webpage += "</tr>";
+  webpage += "</tbody>";
+  webpage += "<script> const checkbox = document.getElementById('sunrise-sunset'); const startTimeInput = document.getElementsByName('StartTime')[0]; const stopTimeInput = document.getElementsByName('StopTime')[0]; startTimeInput.disabled = stopTimeInput.disabled = checkbox.checked; checkbox.addEventListener('change', (event) => { startTimeInput.disabled = stopTimeInput.disabled = event.currentTarget.checked; }) </script>";
+}
+//#########################################################################################
+void WeekScheduleHtml(int channel) {
   webpage += "<col><col><col><col><col><col><col><col>";
   webpage += "<tr><td>Контроль</td>";
   webpage += "<td>" + Timer[channel][0].DoW + "</td>";
@@ -535,11 +604,6 @@ void TimerSet(int channel) {
       webpage += "</tr>";
     }
   }
-  webpage += "</table>";
-  webpage += "<div class='centre'>";
-  webpage += "<br><input type='submit' value='Зберегти'><br><br>";
-  webpage += "</div></form>";
-  append_HTML_footer();
 }
 //#########################################################################################
 void Help() {
@@ -588,25 +652,21 @@ void CheckTimerEvent() {
   Channel13_State = "OFF";                              // Switch Channel OFF until the schedule decides otherwise
 
   for (byte channel = 0; channel < Channels; channel++) {
-    for (byte dow = 0; dow < 7; dow++) {                // Look for any valid timer events, if found turn the heating on
-      for (byte p = 0; p < NumOfEvents; p++) {
-        // Now check for a scheduled ON time, if so Switch the Timer ON and check the temperature against target temperature
-        if (String(dow) == DoW_str && (TimeNow >= Timer[channel][dow].Start[p] && TimeNow < Timer[channel][dow].Stop[p] && Timer[channel][dow].Start[p] != ""))
-        {
-          if (channel == 0) Channel1_State = "ON";
-          if (channel == 1) Channel2_State = "ON";
-          if (channel == 2) Channel3_State = "ON";
-          if (channel == 3) Channel4_State = "ON";
-          if (channel == 4) Channel5_State = "ON";
-          if (channel == 5) Channel6_State = "ON";
-          if (channel == 6) Channel7_State = "ON";
-          if (channel == 7) Channel8_State = "ON";
-          if (channel == 8) Channel9_State = "ON";
-          if (channel == 9) Channel10_State = "ON";
-          if (channel == 10) Channel11_State = "ON";
-          if (channel == 11) Channel12_State = "ON";
-        }
-      }
+    if (CheckTime(channel, TimeNow))
+    {
+      if (channel == 0) Channel1_State = "ON";
+      if (channel == 1) Channel2_State = "ON";
+      if (channel == 2) Channel3_State = "ON";
+      if (channel == 3) Channel4_State = "ON";
+      if (channel == 4) Channel5_State = "ON";
+      if (channel == 5) Channel6_State = "ON";
+      if (channel == 6) Channel7_State = "ON";
+      if (channel == 7) Channel8_State = "ON";
+      if (channel == 8) Channel9_State = "ON";
+      if (channel == 9) Channel10_State = "ON";
+      if (channel == 10) Channel11_State = "ON";
+      if (channel == 11) Channel12_State = "ON";
+      if (channel == 12) Channel13_State = "ON";
     }
   }
 
@@ -683,10 +743,6 @@ void CheckTimerEvent() {
     Channel12_State = Channel12Override.State;
   }
 
-  if (TimeNow >= Channel13Schedule.SunriseTime && TimeNow < Channel13Schedule.SunsetTime) {
-    Channel13_State = "ON";
-  }
-
   if (Channel1_State == "ON") ActuateChannel(ON, Channel1, Channel1_Pin); else ActuateChannel(OFF, Channel1, Channel1_Pin);
   if (Channel2_State == "ON") ActuateChannel(ON, Channel2, Channel2_Pin); else ActuateChannel(OFF, Channel2, Channel2_Pin);
   if (Channel3_State == "ON") ActuateChannel(ON, Channel3, Channel3_Pin); else ActuateChannel(OFF, Channel3, Channel3_Pin);
@@ -728,6 +784,16 @@ void ActuateChannel(bool demand, byte channel, byte channel_pin) {
 }
 //#########################################################################################
 void append_HTML_header(bool refreshMode) {
+  String channel13Icon = Timer[Channel13][0].IsSunriseSunsetMode
+    ? "<svg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' width='36' height='36' viewBox='0, 0, 400, 400'><g id='svgg'><path id='path0' d='M193.750 87.500 C 193.750 111.111,196.042 118.750,203.125 118.750 C 210.208 118.750,212.500 111.111,212.500 87.500 C 212.500 63.889,210.208 56.250,203.125 56.250 C 196.042 56.250,193.750 63.889,193.750 87.500 M100.000 90.119 C 100.000 103.943,120.991 137.416,129.688 137.460 C 140.917 137.517,139.292 124.891,125.069 101.563 C 112.168 80.404,100.000 74.849,100.000 90.119 M276.563 105.974 C 259.920 135.120,259.573 137.500,271.967 137.500 C 281.729 137.500,306.185 102.922,306.227 89.063 C 306.275 72.993,290.144 82.189,276.563 105.974 M178.125 149.802 C 138.487 158.845,102.526 192.059,95.763 225.873 C 92.217 243.603,91.809 243.750,46.094 243.750 C 9.288 243.750,0.000 245.639,0.000 253.125 C 0.000 261.263,26.389 262.500,200.000 262.500 C 373.611 262.500,400.000 261.263,400.000 253.125 C 400.000 245.639,390.712 243.750,353.906 243.750 C 308.191 243.750,307.783 243.603,304.237 225.873 C 294.364 176.506,230.343 137.889,178.125 149.802 M31.250 162.592 C 31.250 169.959,68.172 193.692,79.688 193.727 C 94.260 193.770,87.513 178.177,68.204 167.188 C 46.707 154.952,31.250 153.030,31.250 162.592 M332.813 169.469 C 310.766 183.588,306.534 193.750,322.700 193.750 C 335.453 193.750,375.000 169.734,375.000 161.990 C 375.000 152.161,354.036 155.877,332.813 169.469 M245.254 179.132 C 263.289 188.217,277.143 206.226,284.145 229.688 L 288.342 243.750 200.000 243.750 L 111.658 243.750 116.024 229.688 C 119.675 217.928,142.000 181.465,145.738 181.156 C 146.363 181.104,158.125 177.076,171.875 172.204 C 198.029 162.937,216.580 164.689,245.254 179.132 M62.500 296.875 C 62.500 304.924,81.944 306.250,200.000 306.250 C 318.056 306.250,337.500 304.924,337.500 296.875 C 337.500 288.826,318.056 287.500,200.000 287.500 C 81.944 287.500,62.500 288.826,62.500 296.875 M112.500 334.375 C 112.500 342.262,126.389 343.750,200.000 343.750 C 273.611 343.750,287.500 342.262,287.500 334.375 C 287.500 326.488,273.611 325.000,200.000 325.000 C 126.389 325.000,112.500 326.488,112.500 334.375 ' stroke='none' fill='blue' fill-rule='evenodd'></path></g></svg>"
+    : "<svg id='schedule-svg' style='margin-top: 7px;' version='1.1' xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' width='28' height='28' viewBox='0, 0, 400,400'><g id='svgg'><path id='path0' d='M70.814 1.483 C 66.486 4.336,65.636 6.623,65.630 15.430 L 65.625 23.438 50.195 23.458 C 26.265 23.489,15.159 28.672,5.873 44.141 C -0.526 54.801,-0.052 43.093,0.182 184.766 L 0.391 310.547 3.063 316.016 C 6.559 323.171,12.766 329.379,19.922 332.875 L 25.391 335.547 117.794 335.938 L 210.198 336.328 212.768 342.239 C 242.656 410.995,338.509 420.564,382.322 359.165 C 413.687 315.211,401.623 248.833,357.229 221.094 L 351.602 217.578 351.562 137.891 L 351.522 58.203 349.776 53.080 C 342.569 31.941,328.585 23.438,301.030 23.438 L 285.938 23.438 285.932 15.430 C 285.925 3.979,282.910 0.010,274.219 0.010 C 265.528 0.010,262.513 3.979,262.505 15.430 L 262.500 23.438 241.406 23.438 L 220.313 23.438 220.307 15.430 C 220.300 3.979,217.285 0.010,208.594 0.010 C 199.903 0.010,196.888 3.979,196.880 15.430 L 196.875 23.438 175.781 23.438 L 154.688 23.438 154.682 15.430 C 154.675 3.979,151.660 0.010,142.969 0.010 C 134.278 0.010,131.263 3.979,131.255 15.430 L 131.250 23.438 110.156 23.438 L 89.063 23.438 89.057 15.430 C 89.052 6.623,88.202 4.336,83.874 1.483 C 80.835 -0.521,73.852 -0.521,70.814 1.483 M65.630 54.883 C 65.638 66.333,68.653 70.302,77.344 70.302 C 86.035 70.302,89.050 66.333,89.057 54.883 L 89.063 46.875 110.156 46.875 L 131.250 46.875 131.255 54.883 C 131.263 66.333,134.278 70.302,142.969 70.302 C 151.660 70.302,154.675 66.333,154.682 54.883 L 154.688 46.875 175.781 46.875 L 196.875 46.875 196.880 54.883 C 196.888 66.333,199.903 70.302,208.594 70.302 C 217.285 70.302,220.300 66.333,220.307 54.883 L 220.313 46.875 241.406 46.875 L 262.500 46.875 262.505 54.883 C 262.513 66.333,265.528 70.302,274.219 70.302 C 282.936 70.302,285.925 66.342,285.932 54.784 L 285.938 46.678 299.414 47.030 C 324.735 47.690,327.516 51.079,327.982 81.836 L 328.281 101.563 175.781 101.563 L 23.282 101.563 23.579 81.836 C 24.049 50.626,27.075 47.214,54.492 46.973 L 65.625 46.875 65.630 54.883 M328.125 166.280 L 328.125 207.560 320.898 206.148 C 260.592 194.358,204.688 240.503,204.688 302.072 L 204.688 312.533 118.555 312.321 C 21.636 312.083,29.486 312.595,25.532 306.250 L 23.828 303.516 23.617 214.258 L 23.405 125.000 175.765 125.000 L 328.125 125.000 328.125 166.280 M125.797 155.275 C 119.705 158.335,117.475 167.003,121.305 172.736 C 124.455 177.452,126.908 178.123,141.016 178.123 C 158.144 178.123,162.500 175.668,162.500 166.016 C 162.500 156.363,158.144 153.909,141.016 153.909 C 130.673 153.909,128.046 154.144,125.797 155.275 M195.328 155.275 C 189.236 158.335,187.006 167.003,190.836 172.736 C 193.987 177.452,196.439 178.123,210.547 178.123 C 227.675 178.123,232.031 175.668,232.031 166.016 C 232.031 156.363,227.675 153.909,210.547 153.909 C 200.204 153.909,197.578 154.144,195.328 155.275 M264.859 155.275 C 260.816 157.306,258.594 161.116,258.594 166.016 C 258.594 175.668,262.950 178.123,280.078 178.123 C 297.207 178.123,301.563 175.668,301.563 166.016 C 301.563 156.363,297.207 153.909,280.078 153.909 C 269.735 153.909,267.109 154.144,264.859 155.275 M55.189 208.514 C 48.049 213.221,48.049 224.279,55.189 228.986 C 57.168 230.291,59.019 230.458,71.484 230.458 C 89.610 230.458,92.958 228.633,92.958 218.750 C 92.958 208.867,89.610 207.042,71.484 207.042 C 59.019 207.042,57.168 207.209,55.189 208.514 M124.720 208.514 C 121.071 210.919,119.542 213.944,119.542 218.750 C 119.542 228.633,122.890 230.458,141.016 230.458 C 159.141 230.458,162.490 228.633,162.490 218.750 C 162.490 208.867,159.141 207.042,141.016 207.042 C 128.551 207.042,126.699 207.209,124.720 208.514 M194.251 208.514 C 190.603 210.919,189.073 213.944,189.073 218.750 C 189.073 228.633,192.421 230.458,210.547 230.458 C 228.673 230.458,232.021 228.633,232.021 218.750 C 232.021 208.867,228.673 207.042,210.547 207.042 C 198.082 207.042,196.231 207.209,194.251 208.514 M318.638 230.535 C 378.457 244.337,396.206 321.829,348.241 359.785 C 299.799 398.118,228.906 363.994,228.906 302.344 C 228.906 255.042,272.757 219.950,318.638 230.535 M295.814 253.045 C 290.645 256.452,290.635 256.511,290.635 282.813 C 290.635 309.114,290.645 309.173,295.814 312.580 C 299.239 314.838,344.511 314.838,347.936 312.580 C 355.076 307.873,355.076 296.814,347.936 292.108 C 345.934 290.788,344.064 290.635,329.883 290.630 L 314.063 290.625 314.057 274.805 C 314.051 254.716,312.466 251.573,302.344 251.573 C 299.445 251.573,297.320 252.052,295.814 253.045 M56.266 260.743 C 47.811 264.991,47.811 277.978,56.266 282.225 C 58.515 283.356,61.141 283.591,71.484 283.591 C 88.613 283.591,92.969 281.137,92.969 271.484 C 92.969 261.832,88.613 259.377,71.484 259.377 C 61.141 259.377,58.515 259.613,56.266 260.743 M125.797 260.743 C 121.754 262.775,119.531 266.585,119.531 271.484 C 119.531 281.137,123.887 283.591,141.016 283.591 C 158.144 283.591,162.500 281.137,162.500 271.484 C 162.500 261.832,158.144 259.377,141.016 259.377 C 130.673 259.377,128.046 259.613,125.797 260.743 ' stroke='none' fill='blue' fill-rule='evenodd'></path></g></svg>";
+  String channel13StartTime = Timer[Channel13][0].IsSunriseSunsetMode
+    ? SunriseSunsetSchedule.SunriseTime
+    : Timer[Channel13][0].Start[0];
+  String channel13StopTime = Timer[Channel13][0].IsSunriseSunsetMode
+    ? SunriseSunsetSchedule.SunsetTime
+    : Timer[Channel13][0].Stop[0];
+  
   webpage  = "<!DOCTYPE html><html lang='en'>";
   webpage += "<head>";
   webpage += "<title>" + sitetitle + "</title>";
@@ -763,7 +829,7 @@ void append_HTML_header(bool refreshMode) {
   webpage += ".wifi {padding:3px;position:relative;top:1em;left:0.36em;}";
   webpage += ".right-panel {float:right;margin-right:20px;margin-top:5px;}";
   webpage += ".wifi-info {float:right;}";
-  webpage += ".sunrise-sunset {float:left;margin-right:20px;margin-top:5px;}";
+  webpage += ".sunrise-sunset {float:left;margin-right:20px;margin-top:5px;cursor:pointer;}";
   webpage += ".wifi, .wifi:before {display:inline-block;border:9px double transparent;border-top-color:currentColor;border-radius:50%;}";
   webpage += ".wifi:before {content:'';width:0;height:0;}";
   webpage += ".channel-name {display:block;text-decoration:none;color:blue;}";
@@ -773,9 +839,9 @@ void append_HTML_header(bool refreshMode) {
   webpage += "<a href='/'>Статус</a>";
   webpage += "<a href='help'>Довідка</a>";
   webpage += "<div class='right-panel'>";
-  webpage += "<div class='sunrise-sunset'>";
-  webpage += "<svg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' width='36' height='36' viewBox='0, 0, 400, 400'><g id='svgg'><path id='path0' d='M193.750 87.500 C 193.750 111.111,196.042 118.750,203.125 118.750 C 210.208 118.750,212.500 111.111,212.500 87.500 C 212.500 63.889,210.208 56.250,203.125 56.250 C 196.042 56.250,193.750 63.889,193.750 87.500 M100.000 90.119 C 100.000 103.943,120.991 137.416,129.688 137.460 C 140.917 137.517,139.292 124.891,125.069 101.563 C 112.168 80.404,100.000 74.849,100.000 90.119 M276.563 105.974 C 259.920 135.120,259.573 137.500,271.967 137.500 C 281.729 137.500,306.185 102.922,306.227 89.063 C 306.275 72.993,290.144 82.189,276.563 105.974 M178.125 149.802 C 138.487 158.845,102.526 192.059,95.763 225.873 C 92.217 243.603,91.809 243.750,46.094 243.750 C 9.288 243.750,0.000 245.639,0.000 253.125 C 0.000 261.263,26.389 262.500,200.000 262.500 C 373.611 262.500,400.000 261.263,400.000 253.125 C 400.000 245.639,390.712 243.750,353.906 243.750 C 308.191 243.750,307.783 243.603,304.237 225.873 C 294.364 176.506,230.343 137.889,178.125 149.802 M31.250 162.592 C 31.250 169.959,68.172 193.692,79.688 193.727 C 94.260 193.770,87.513 178.177,68.204 167.188 C 46.707 154.952,31.250 153.030,31.250 162.592 M332.813 169.469 C 310.766 183.588,306.534 193.750,322.700 193.750 C 335.453 193.750,375.000 169.734,375.000 161.990 C 375.000 152.161,354.036 155.877,332.813 169.469 M245.254 179.132 C 263.289 188.217,277.143 206.226,284.145 229.688 L 288.342 243.750 200.000 243.750 L 111.658 243.750 116.024 229.688 C 119.675 217.928,142.000 181.465,145.738 181.156 C 146.363 181.104,158.125 177.076,171.875 172.204 C 198.029 162.937,216.580 164.689,245.254 179.132 M62.500 296.875 C 62.500 304.924,81.944 306.250,200.000 306.250 C 318.056 306.250,337.500 304.924,337.500 296.875 C 337.500 288.826,318.056 287.500,200.000 287.500 C 81.944 287.500,62.500 288.826,62.500 296.875 M112.500 334.375 C 112.500 342.262,126.389 343.750,200.000 343.750 C 273.611 343.750,287.500 342.262,287.500 334.375 C 287.500 326.488,273.611 325.000,200.000 325.000 C 126.389 325.000,112.500 326.488,112.500 334.375 ' stroke='none' fill='blue' fill-rule='evenodd'></path></g></svg>";
-  webpage += "<div style='float: right; margin-top: 14px; margin-left: 12px;'>" + Channel13Schedule.SunriseTime + " | " + Channel13Schedule.SunsetTime + "</div>";
+  webpage += "<div class='sunrise-sunset' onclick='location.href=\"/timer13\"'>";
+  webpage += channel13Icon;
+  webpage += "<div style='float: right; margin-top: 14px; margin-left: 12px;'>" + channel13StartTime + " | " + channel13StopTime + "</div>";
   webpage += "</div>";
   webpage += "<div class='wifi-info'><div class='wifi'></div><span>" + WiFiSignal() + "</span></div>";
   webpage += "</div>";
@@ -886,12 +952,12 @@ String ConvertUnixTime(int unix_time, const char* format) {
   return output;
 }
 //#########################################################################################
-void UpdateChannel13Schedule() {
+void UpdateSunriseSunsetSchedule() {
   time_t tm = UnixTime;
   struct tm *now_tm = localtime(&tm);
   String DateNow;
   DateNow = ConvertUnixTime(UnixTime, "%Y.%m.%d");           // Get the current time e.g. 2023.04.23
-  if (Channel13Schedule.Date >= DateNow)
+  if (SunriseSunsetSchedule.Date >= DateNow)
   {
     return;
   }
@@ -902,9 +968,9 @@ void UpdateChannel13Schedule() {
   char sunset[] = "00:00";
   location.min2str(sunrise, sunriseMins);
   location.min2str(sunset, sunsetMins);
-  Channel13Schedule.Date = DateNow;
-  Channel13Schedule.SunriseTime = String(sunrise);
-  Channel13Schedule.SunsetTime = String(sunset);
+  SunriseSunsetSchedule.Date = DateNow;
+  SunriseSunsetSchedule.SunriseTime = String(sunrise);
+  SunriseSunsetSchedule.SunsetTime = String(sunset);
 }
 //#########################################################################################
 void StartSPIFFS() {
@@ -937,6 +1003,10 @@ void Initialise_Array() {
   }
 }
 //#########################################################################################
+void InitializeSunriseSunsetChannels() {
+  Timer[Channel13][0].IsSunriseSunsetMode = true;
+}
+//#########################################################################################
 void SaveSettings() {
   Serial.println("Getting ready to Save settings...");
   File dataFile = SPIFFS.open("/" + DataFile, "w");
@@ -946,6 +1016,7 @@ void SaveSettings() {
       for (byte dow = 0; dow < 7; dow++) {
         //Serial.println("Day of week = " + String(dow));
         for (byte p = 0; p < NumOfEvents; p++) {
+          dataFile.println(String(Timer[channel][dow].IsSunriseSunsetMode));
           dataFile.println(Timer[channel][dow].Start[p]);
           dataFile.println(Timer[channel][dow].Stop[p]);
           //Serial.println("Period: " + String(p) + " from: " + Timer[channel][dow].Start[p] + " to: " + Timer[channel][dow].Stop[p]);
@@ -953,32 +1024,43 @@ void SaveSettings() {
       }
     }
     dataFile.close();
+    File dataFile1 = SPIFFS.open("/" + DataFile, "r");
+    // Serial.println(dataFile1.readString());
+    dataFile1.close();
     Serial.println("Settings saved...");
   }
 }
 //#########################################################################################
-void RecoverSettings() {
+// Recivers settings from the file. Returns boolean value that indicates wether the settings have been recovered.
+bool RecoverSettings() {
   String Entry;
   Serial.println("Reading settings...");
   File dataFile = SPIFFS.open("/" + DataFile, "r");
-  if (dataFile) { // if the file is available, read it
-    Serial.println("Recovering settings...");
-    while (dataFile.available()) {
-      for (byte channel = 0; channel < Channels; channel++) {
-        //Serial.println("Channel-" + String(channel + 1));
-        for (byte dow = 0; dow < 7; dow++) {
-          //Serial.println("Day of week = " + String(dow));
-          for (byte p = 0; p < NumOfEvents; p++) {
-            Timer[channel][dow].Start[p] = dataFile.readStringUntil('\n'); Timer[channel][dow].Start[p].trim();
-            Timer[channel][dow].Stop[p]  = dataFile.readStringUntil('\n'); Timer[channel][dow].Stop[p].trim();
-            //Serial.println("Period: " + String(p) + " from: " + Timer[channel][dow].Start[p] + " to: " + Timer[channel][dow].Stop[p]);
-          }
+  if (!dataFile) {
+    return false;
+  }
+
+  // if the file is available, read it
+  Serial.println("Recovering settings...");
+  while (dataFile.available()) {
+    for (byte channel = 0; channel < Channels; channel++) {
+      //Serial.println("Channel-" + String(channel + 1));
+      for (byte dow = 0; dow < 7; dow++) {
+        //Serial.println("Day of week = " + String(dow));
+        for (byte p = 0; p < NumOfEvents; p++) {
+          String isSunriseSunsetModeStr = dataFile.readStringUntil('\n'); isSunriseSunsetModeStr.trim();
+          Timer[channel][dow].IsSunriseSunsetMode = isSunriseSunsetModeStr == "1";
+          Timer[channel][dow].Start[p] = dataFile.readStringUntil('\n'); Timer[channel][dow].Start[p].trim();
+          Timer[channel][dow].Stop[p]  = dataFile.readStringUntil('\n'); Timer[channel][dow].Stop[p].trim();
+          //Serial.println("Period: " + String(p) + " from: " + Timer[channel][dow].Start[p] + " to: " + Timer[channel][dow].Stop[p]);
         }
       }
-      dataFile.close();
-      Serial.println("Settings recovered...");
     }
+    dataFile.close();
+    Serial.println("Settings recovered...");
   }
+
+  return true;
 }
 //#########################################################################################
 String WiFiSignal() {
