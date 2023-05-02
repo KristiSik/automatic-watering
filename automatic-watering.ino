@@ -841,7 +841,7 @@ void append_HTML_header(bool refreshMode) {
   webpage += "<div class='right-panel'>";
   webpage += "<div class='sunrise-sunset' onclick='location.href=\"/timer13\"'>";
   webpage += channel13Icon;
-  webpage += "<div style='float: right; margin-top: 14px; margin-left: 12px;'>" + channel13StartTime + " | " + channel13StopTime + "</div>";
+  webpage += "<div style='float: right; margin-top: 14px; margin-left: 12px;'>" + channel13StartTime + " | " + channel13StopTime + " <b>(" + Channel13_State + ")</b></div>";
   webpage += "</div>";
   webpage += "<div class='wifi-info'><div class='wifi'></div><span>" + WiFiSignal() + "</span></div>";
   webpage += "</div>";
