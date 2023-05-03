@@ -66,6 +66,7 @@ const char* ServerName = "Controller"; // Connect to the server with http://cont
 
 #define LEDPIN          5              // Define the LED Control pin
 #define ChannelReverse  false          // Set to true for Relay that requires a signal HIGH for ON, usually relays need a LOW to actuate
+#define SunsetOffset    26             // Difference between sunset and nautical twilight in minutes
 
 struct Settings {
   bool IsSunriseSunsetMode;              // Indicates wether the sunrise&sunset time should be used instead start&stop
@@ -512,7 +513,7 @@ void Homepage() {
 //#########################################################################################
 bool CheckTime(byte channel, String TimeNow_Str) {
   if (Timer[channel][0].IsSunriseSunsetMode) {
-    return TimeNow_Str >= SunriseSunsetSchedule.SunriseTime && TimeNow_Str < SunriseSunsetSchedule.SunsetTime;
+    return !(TimeNow_Str >= SunriseSunsetSchedule.SunriseTime && TimeNow_Str < SunriseSunsetSchedule.SunsetTime);
   }
 
   for (byte dow = 0; dow < 7; dow++) {                 // Look for any valid timer events, if found turn the heating on
@@ -963,7 +964,7 @@ void UpdateSunriseSunsetSchedule() {
   }
 
   int sunriseMins = location.sunrise(1900 + now_tm->tm_year, now_tm->tm_mon + 1, now_tm->tm_mday, now_tm->tm_isdst);
-  int sunsetMins = location.sunset(1900 + now_tm->tm_year, now_tm->tm_mon + 1, now_tm->tm_mday, now_tm->tm_isdst);
+  int sunsetMins = location.sunset(1900 + now_tm->tm_year, now_tm->tm_mon + 1, now_tm->tm_mday, now_tm->tm_isdst) + SunsetOffset;
   char sunrise[] = "00:00";
   char sunset[] = "00:00";
   location.min2str(sunrise, sunriseMins);
