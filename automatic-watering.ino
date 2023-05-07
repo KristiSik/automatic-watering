@@ -470,17 +470,16 @@ void loop() {
 }
 //#########################################################################################
 void Homepage() {
-  bool TimerSummary[4][7][48]; // 7 days each with 48 timer periods
   append_HTML_header(Refresh);
-  webpage += "<h2>Статус каналу @ " + Time_str + "</h2><br>";
+  webpage += "<h2>Статус каналів @ " + Time_str + "</h2><br>";
   webpage += "<table class='centre channels-table'>";
   webpage += "<tr>";
-  webpage += " <td><a class='channel-name' href='/timer1'>Канал-1<br>Клумба-1</a></td>";
-  webpage += " <td><a class='channel-name' href='/timer2'>Канал-2<br>Клумба-2</a></td>";
-  webpage += " <td><a class='channel-name' href='/timer3'>Канал-3<br>Клумба-3</a></td>";
-  webpage += " <td><a class='channel-name' href='/timer4'>Канал-4<br>Клумба-4</a></td>";
-  webpage += " <td><a class='channel-name' href='/timer5'>Канал-5<br>Клумба-5</a></td>";
-  webpage += " <td><a class='channel-name' href='/timer6'>Канал-6<br>Клумба-6</a></td>";
+  webpage += " <td><a class='channel-name' href='/timer1'>" + ChannelTitles[0] + "</a></td>";
+  webpage += " <td><a class='channel-name' href='/timer2'>" + ChannelTitles[1] + "</a></td>";
+  webpage += " <td><a class='channel-name' href='/timer3'>" + ChannelTitles[2] + "</a></td>";
+  webpage += " <td><a class='channel-name' href='/timer4'>" + ChannelTitles[3] + "</a></td>";
+  webpage += " <td><a class='channel-name' href='/timer5'>" + ChannelTitles[4] + "</a></td>";
+  webpage += " <td><a class='channel-name' href='/timer6'>" + ChannelTitles[5] + "</a></td>";
   webpage += "</tr>";
   webpage += "<tr>";
   webpage += " <td><div class='circle'><a class='" + String((Channel1_State == "ON" ? "on'" : "off'")) + " href='/handlesetup?manualoverride1=" + String((Channel1_State == "ON" ? "OFF'" : "ON'")) + "'>" + String(Channel1_State) + "</a></div></td>";
@@ -491,12 +490,12 @@ void Homepage() {
   webpage += " <td><div class='circle'><a class='" + String((Channel6_State == "ON" ? "on'" : "off'")) + " href='/handlesetup?manualoverride6=" + String((Channel6_State == "ON" ? "OFF'" : "ON'")) + "'>" + String(Channel6_State) + "</a></div></td>";
   webpage += "</tr>";
   webpage += "<tr>";
-  webpage += " <td><a class='channel-name' href='/timer7'>Канал-7<br>Клумба-7</a></td>";
-  webpage += " <td><a class='channel-name' href='/timer8'>Канал-8<br>Клумба-8</a></td>";
-  webpage += " <td><a class='channel-name' href='/timer9'>Канал-9<br>Клумба-9</a></td>";
-  webpage += " <td><a class='channel-name' href='/timer10'>Канал-10<br>Клумба-10</a></td>";
-  webpage += " <td><a class='channel-name' href='/timer11'>Канал-11<br>Клумба-11</a></td>";
-  webpage += " <td><a class='channel-name' href='/timer12'>Канал-12<br>Клумба-12</a></td>";
+  webpage += " <td><a class='channel-name' href='/timer7'>" + ChannelTitles[6] + "</a></td>";
+  webpage += " <td><a class='channel-name' href='/timer8'>" + ChannelTitles[7] + "</a></td>";
+  webpage += " <td><a class='channel-name' href='/timer9'>" + ChannelTitles[8] + "</a></td>";
+  webpage += " <td><a class='channel-name' href='/timer10'>" + ChannelTitles[9] + "</a></td>";
+  webpage += " <td><a class='channel-name' href='/timer11'>" + ChannelTitles[10] + "</a></td>";
+  webpage += " <td><a class='channel-name' href='/timer12'>" + ChannelTitles[11] + "</a></td>";
   webpage += "</tr>";
   webpage += "<tr>";
   webpage += " <td><div class='circle'><a class='" + String((Channel7_State == "ON" ? "on'" : "off'")) + " href='/handlesetup?manualoverride7=" + String((Channel7_State == "ON" ? "OFF'" : "ON'")) + "'>" + String(Channel7_State) + "</a></div></td>";
@@ -529,7 +528,7 @@ bool CheckTime(byte channel, String TimeNow_Str) {
 void TimerSet(int channel, bool sunriseSunsetMode) {
   append_HTML_header(noRefresh);
   webpage += "<h2>Налаштування розкладу Канал-" + String(channel + 1) + "</h2><br>";
-  webpage += "<h3>Клумба-" + String(channel + 1) + "</h3><br>";
+  webpage += "<h3>" + ChannelTitles[channel] + "</h3><br>";
   webpage += "<FORM action='/handletimer" + String(channel) + "'>";
   webpage += "<table class='centre timer'>";
   if (sunriseSunsetMode) {
@@ -583,28 +582,28 @@ void WeekScheduleHtml(int channel) {
   for (byte p = 0; p < NumOfEvents; p++) {
     webpage += "<tr>";
     webpage += "<td>Старт</td>";
-    webpage += "<td><input type='time' name='" + String(0) + "." + String(p) + ".Start' value='"    + Timer[channel][0].Start[p] + "'></td>";
-    for (int dow = 1; dow < 6; dow++) {
+    for (int dow = 0; dow < 7; dow++) {
       webpage += "<td><input type='time' name='" + String(dow) + "." + String(p) + ".Start' value='" + Timer[channel][dow].Start[p] + "'></td>";
     }
-    webpage += "<td><input type='time' name='" + String(6) + "." + String(p) + ".Start' value='" + Timer[channel][6].Start[p] + "'></td>";
     webpage += "</tr>";
     webpage += "<tr><td>Стоп</td>";
-    webpage += "<td><input type='time' name='" + String(0) + "." + String(p) + ".Stop' value='" + Timer[channel][0].Stop[p] + "'></td>";
-    for (int dow = 1; dow < 6; dow++) {
+    for (int dow = 0; dow < 7; dow++) {
       webpage += "<td><input type='time' name='" + String(dow) + "." + String(p) + ".Stop' value='" + Timer[channel][dow].Stop[p] + "'></td>";
     }
-    webpage += "<td><input type='time' name='" + String(6) + "." + String(p) + ".Stop' value='" + Timer[channel][6].Stop[p] + "'></td>";
     webpage += "</tr>";
-    if (p < (NumOfEvents - 1)) {
-      webpage += "<tr><td></td><td></td>";
-      for (int dow = 2; dow < 7; dow++) {
+    webpage += "<tr>";
+    webpage += "<td></td>";
+    for (int dow = 0; dow < 7; dow++) {
+      if (p < (NumOfEvents - 1)) {
         webpage += "<td>-</td>";
+      } else {
+        webpage += "<td><button type='button' onClick='copy(" + String(dow) + ")'>Копіювати</button></td>";
       }
-      webpage += "<td></td>";
-      webpage += "</tr>";
     }
+      webpage += "</tr>";
   }
+
+  webpage += "<script> function copy(dayOfWeekToCopyFrom) { if (!confirm('Ви впевнені, що хочете скопіювати розклад на всі інші дні тижня?')) { return; } var startTimes = []; var stopTimes = []; for (var i = 0; i < 4; i++) { var start = document.getElementsByName(dayOfWeekToCopyFrom + '.' + i + '.Start')[0].value; var stop = document.getElementsByName(dayOfWeekToCopyFrom + '.' + i + '.Stop')[0].value; startTimes[i] = start; stopTimes[i] = stop; } for (var day = 0; day < 7; day++) { if (day == dayOfWeekToCopyFrom) { continue; } for (var i = 0; i < 4; i++) { document.getElementsByName(day + '.' + i + '.Start')[0].value = startTimes[i]; document.getElementsByName(day + '.' + i + '.Stop')[0].value = stopTimes[i]; } } } </script>";
 }
 //#########################################################################################
 void Help() {
@@ -818,6 +817,7 @@ void append_HTML_header(bool refreshMode) {
   webpage += "table.sum td {padding:0.2em 0.6em 0.2em 0.6em;font-size:1.1em;border:1px solid blue;}";
   webpage += "col:first-child {background:lightcyan}col:nth-child(2){background:#CCC}col:nth-child(8){background:#CCC}";
   webpage += "tr:first-child, .channels-table tr:nth-child(odd) {background:lightcyan}";
+  webpage += ".channels-table tr:nth-child(odd) td a {padding: 10px 5px}";
   webpage += ".medium {font-size:1.4em;padding:0;margin:0}";
   webpage += ".ps {font-size:0.7em;padding:0;margin:0}";
   webpage += "footer {padding:0.08em;background-color:cyan;font-size:1.1em;}";
@@ -834,6 +834,7 @@ void append_HTML_header(bool refreshMode) {
   webpage += ".wifi, .wifi:before {display:inline-block;border:9px double transparent;border-top-color:currentColor;border-radius:50%;}";
   webpage += ".wifi:before {content:'';width:0;height:0;}";
   webpage += ".channel-name {display:block;text-decoration:none;color:blue;}";
+  webpage += "input[type='submit'] {cursor: pointer;background:blue;border:2px black;color:white;font-size:15px;padding:5px 15px;}";
   webpage += "</style></head>";
   webpage += "<body>";
   webpage += "<div class='topnav'>";
